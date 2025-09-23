@@ -772,6 +772,7 @@ class TranscriptView(APIView):
                     "speaker_name": utterance.participant.full_name,
                     "speaker_uuid": utterance.participant.uuid,
                     "speaker_user_uuid": utterance.participant.user_uuid,
+                    "speaker_is_host": utterance.participant.is_host,
                     "timestamp_ms": utterance.timestamp_ms,
                     "duration_ms": utterance.duration_ms,
                     "transcription": utterance.transcription,
