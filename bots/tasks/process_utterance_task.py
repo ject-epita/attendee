@@ -84,8 +84,8 @@ def process_utterance(self, utterance_id):
             utterance.audio_blob = b""  # set the audio blob binary field to empty byte string
 
         # If the utterance has an associated audio chunk, clear the audio blob on the audio chunk.
-        # If async transcription is enabled for the organization, do NOT clear it, because we may use it later in an async transcription.
-        if utterance.audio_chunk and not utterance.recording.bot.project.organization.is_async_transcription_enabled:
+        # If async transcription data is being saved, do NOT clear it, because we may use it later in an async transcription.
+        if utterance.audio_chunk and not utterance.recording.bot.record_audio_for_async_transcription():
             utterance_audio_chunk = utterance.audio_chunk
             utterance_audio_chunk.audio_blob = b""
             utterance_audio_chunk.save()

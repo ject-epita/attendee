@@ -489,6 +489,11 @@ class RTMPSettingsJSONField(serializers.JSONField):
                 "description": "Whether to record chat messages even when the recording is paused. Defaults to false.",
                 "default": False,
             },
+            "record_audio_for_async_transcription": {
+                "type": "boolean",
+                "description": "Whether to record additional audio data which is needed for creating async (post-meeting) transcriptions. Defaults to false.",
+                "default": False,
+            },
         },
         "additionalProperties": False,
         "required": [],
@@ -1113,7 +1118,7 @@ class CreateBotSerializer(BotValidationMixin, serializers.Serializer):
     recording_settings = RecordingSettingsJSONField(
         help_text="The settings for the bot's recording.",
         required=False,
-        default={"format": RecordingFormats.MP4, "view": RecordingViews.SPEAKER_VIEW, "resolution": RecordingResolutions.HD_1080P, "record_chat_messages_when_paused": False},
+        default={"format": RecordingFormats.MP4, "view": RecordingViews.SPEAKER_VIEW, "resolution": RecordingResolutions.HD_1080P, "record_chat_messages_when_paused": False, "record_audio_for_async_transcription": False},
     )
 
     RECORDING_SETTINGS_SCHEMA = {
@@ -1126,6 +1131,7 @@ class CreateBotSerializer(BotValidationMixin, serializers.Serializer):
                 "enum": list(RecordingResolutions.values),
             },
             "record_chat_messages_when_paused": {"type": "boolean"},
+            "record_audio_for_async_transcription": {"type": "boolean"},
         },
         "additionalProperties": False,
         "required": [],

@@ -593,6 +593,14 @@ class Bot(models.Model):
             recording_settings = {}
         return recording_settings.get("record_chat_messages_when_paused", False)
 
+    def record_audio_for_async_transcription(self):
+        if not self.project.organization.is_async_transcription_enabled:
+            return False
+        recording_settings = self.settings.get("recording_settings", {})
+        if recording_settings is None:
+            recording_settings = {}
+        return recording_settings.get("record_audio_for_async_transcription", False)
+
     def recording_type(self):
         # Recording type is derived from the recording format
         recording_format = self.recording_format()
@@ -1779,9 +1787,11 @@ class AsyncTranscription(models.Model):
     @property
     def transcription_provider(self):
         # Pretty hacky, we should derive the transcription provider in a simpler way in the future.
-        # But for now, we're going to do this to keep it consistent with how it works for normal transcriptions.          
+        # But for now, we're going to do this to keep it consistent with how it works for normal transcriptions.
         from .utils import transcription_provider_from_bot_creation_data
+
         return transcription_provider_from_bot_creation_data({**self.recording.bot.settings, **self.settings})
+
 
 class AsyncTranscriptionManager:
     @classmethod
