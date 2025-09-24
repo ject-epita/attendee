@@ -88,7 +88,7 @@ class BotController:
         return self.get_recording_transcription_provider() == TranscriptionProviders.CLOSED_CAPTION_FROM_PLATFORM
 
     def should_capture_audio_chunks(self):
-        return self.save_utterances_for_individual_audio_chunks() or self.bot_in_db.record_audio_for_async_transcription()
+        return self.save_utterances_for_individual_audio_chunks() or self.bot_in_db.record_async_transcription_audio_chunks()
 
     def get_google_meet_bot_adapter(self):
         from bots.google_meet_bot_adapter import GoogleMeetBotAdapter

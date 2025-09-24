@@ -808,8 +808,8 @@ class TranscriptView(APIView):
             if not bot.project.organization.is_async_transcription_enabled:
                 return Response({"error": "Async transcription is not enabled for your account."}, status=status.HTTP_400_BAD_REQUEST)
 
-            if not bot.record_audio_for_async_transcription():
-                return Response({"error": "Cannot generate async transcription because you did not enable recording_settings.record_audio_for_async_transcription when you created the bot."}, status=status.HTTP_400_BAD_REQUEST)
+            if not bot.record_async_transcription_audio_chunks():
+                return Response({"error": "Cannot generate async transcription because you did not enable recording_settings.record_async_transcription_audio_chunks when you created the bot."}, status=status.HTTP_400_BAD_REQUEST)
 
             if bot.state != BotStates.ENDED:
                 return Response({"error": "Cannot create async transcription because bot is not in state ended. It is in state " + BotStates.state_to_api_code(bot.state)}, status=status.HTTP_400_BAD_REQUEST)

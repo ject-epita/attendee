@@ -593,13 +593,13 @@ class Bot(models.Model):
             recording_settings = {}
         return recording_settings.get("record_chat_messages_when_paused", False)
 
-    def record_audio_for_async_transcription(self):
+    def record_async_transcription_audio_chunks(self):
         if not self.project.organization.is_async_transcription_enabled:
             return False
         recording_settings = self.settings.get("recording_settings", {})
         if recording_settings is None:
             recording_settings = {}
-        return recording_settings.get("record_audio_for_async_transcription", False)
+        return recording_settings.get("record_async_transcription_audio_chunks", False)
 
     def recording_type(self):
         # Recording type is derived from the recording format
