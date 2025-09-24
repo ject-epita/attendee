@@ -76,7 +76,7 @@ class BotController:
     UTTERANCE_TERMINATION_WAIT_TIME_SECONDS = 300
 
     def per_participant_audio_input_manager(self):
-        if self.bot_in_db.deepgram_use_streaming():
+        if self.bot_in_db.transcription_settings.deepgram_use_streaming():
             return self.per_participant_streaming_audio_input_manager
         else:
             return self.per_participant_non_streaming_audio_input_manager
@@ -619,7 +619,7 @@ class BotController:
         )
 
         # Only used for adapters that can provide closed captions
-        if self.bot_in_db.meeting_closed_captions_merge_consecutive_captions():
+        if self.bot_in_db.transcription_settings.meeting_closed_captions_merge_consecutive_captions():
             self.closed_caption_manager = GroupedClosedCaptionManager(
                 save_utterance_callback=self.save_closed_caption_utterance,
                 get_participant_callback=self.get_participant,

@@ -61,12 +61,12 @@ class PerParticipantStreamingAudioInputManager:
             return DeepgramStreamingTranscriber(
                 deepgram_api_key=self.deepgram_api_key,
                 interim_results=True,
-                language=self.bot.deepgram_language(),
-                model=self.bot.deepgram_model(),
-                callback=self.bot.deepgram_callback(),
+                language=self.bot.transcription_settings.deepgram_language(),
+                model=self.bot.transcription_settings.deepgram_model(),
+                callback=self.bot.transcription_settings.deepgram_callback(),
                 sample_rate=self.sample_rate,
                 metadata=metadata_list,
-                redaction_settings=self.bot.deepgram_redaction_settings(),
+                redaction_settings=self.bot.transcription_settings.deepgram_redaction_settings(),
             )
         else:
             raise Exception(f"Unsupported transcription provider: {self.transcription_provider}")
