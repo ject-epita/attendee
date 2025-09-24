@@ -19,10 +19,9 @@ def calculate_normalized_rms(audio_bytes):
 
 
 class PerParticipantStreamingAudioInputManager:
-    def __init__(self, *, save_utterance_callback, get_participant_callback, sample_rate, transcription_provider, bot):
+    def __init__(self, *, get_participant_callback, sample_rate, transcription_provider, bot):
         self.queue = queue.Queue()
 
-        self.save_utterance_callback = save_utterance_callback
         self.get_participant_callback = get_participant_callback
 
         self.utterances = {}
