@@ -1776,6 +1776,12 @@ class AsyncTranscription(models.Model):
     def transcription_settings(self):
         return TranscriptionSettings(self.settings.get("transcription_settings"))
 
+    @property
+    def transcription_provider(self):
+        # Pretty hacky, we should derive the transcription provider in a simpler way in the future.
+        # But for now, we're going to do this to keep it consistent with how it works for normal transcriptions.          
+        from .utils import transcription_provider_from_bot_creation_data
+        return transcription_provider_from_bot_creation_data({**self.recording.bot.settings, **self.settings})
 
 class AsyncTranscriptionManager:
     @classmethod
@@ -1916,6 +1922,12 @@ class Utterance(models.Model):
         if self.async_transcription:
             return self.async_transcription.transcription_settings
         return self.recording.bot.transcription_settings
+
+    @property
+    def transcription_provider(self):
+        if self.async_transcription:
+            return self.async_transcription.transcription_provider
+        return self.recording.transcription_provider
 
 
 class Credentials(models.Model):

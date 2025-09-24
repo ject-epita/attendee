@@ -47,6 +47,7 @@ from .serializers import (
     BotImageSerializer,
     BotSerializer,
     ChatMessageSerializer,
+    CreateAsyncTranscriptionSerializer,
     CreateBotSerializer,
     ParticipantEventSerializer,
     ParticipantSerializer,
@@ -818,7 +819,7 @@ class TranscriptView(APIView):
                 )
 
             if not recording.audio_chunks.exists():
-                return Response({"error": "Cannot create transcription because the recording audio chunks have been deleted."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Cannot create async transcription because the per-speaker audio data has been deleted or was never created."}, status=status.HTTP_400_BAD_REQUEST)
 
             existing_async_transcription_count = AsyncTranscription.objects.filter(
                 recording=recording,
@@ -827,7 +828,11 @@ class TranscriptView(APIView):
             if existing_async_transcription_count >= 4:
                 return Response({"error": "You cannot have more than 4 async transcriptions per bot."}, status=status.HTTP_400_BAD_REQUEST)
 
-            async_transcription = AsyncTranscription.objects.create(recording=recording)
+            serializer = CreateAsyncTranscriptionSerializer(data={"transcription_settings": request.data.get("transcription_settings")})
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            async_transcription = AsyncTranscription.objects.create(recording=recording, settings=serializer.validated_data)
 
             # Create celery task to process the async transcription
             process_async_transcription.delay(async_transcription.id)

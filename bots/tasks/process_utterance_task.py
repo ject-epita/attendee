@@ -24,22 +24,22 @@ def is_retryable_failure(failure_data):
     ]
 
 
-def get_transcription(utterance, recording):
+def get_transcription(utterance):
     try:
-        if recording.transcription_provider == TranscriptionProviders.DEEPGRAM:
+        if utterance.transcription_provider == TranscriptionProviders.DEEPGRAM:
             transcription, failure_data = get_transcription_via_deepgram(utterance)
-        elif recording.transcription_provider == TranscriptionProviders.GLADIA:
+        elif utterance.transcription_provider == TranscriptionProviders.GLADIA:
             transcription, failure_data = get_transcription_via_gladia(utterance)
-        elif recording.transcription_provider == TranscriptionProviders.OPENAI:
+        elif utterance.transcription_provider == TranscriptionProviders.OPENAI:
             transcription, failure_data = get_transcription_via_openai(utterance)
-        elif recording.transcription_provider == TranscriptionProviders.ASSEMBLY_AI:
+        elif utterance.transcription_provider == TranscriptionProviders.ASSEMBLY_AI:
             transcription, failure_data = get_transcription_via_assemblyai(utterance)
-        elif recording.transcription_provider == TranscriptionProviders.SARVAM:
+        elif utterance.transcription_provider == TranscriptionProviders.SARVAM:
             transcription, failure_data = get_transcription_via_sarvam(utterance)
-        elif recording.transcription_provider == TranscriptionProviders.ELEVENLABS:
+        elif utterance.transcription_provider == TranscriptionProviders.ELEVENLABS:
             transcription, failure_data = get_transcription_via_elevenlabs(utterance)
         else:
-            raise Exception(f"Unknown transcription provider: {recording.transcription_provider}")
+            raise Exception(f"Unknown transcription provider: {utterance.transcription_provider}")
 
         return transcription, failure_data
     except Exception as e:
@@ -66,7 +66,7 @@ def process_utterance(self, utterance_id):
     if utterance.transcription is None:
         utterance.transcription_attempt_count += 1
 
-        transcription, failure_data = get_transcription(utterance, recording)
+        transcription, failure_data = get_transcription(utterance)
 
         if failure_data:
             if utterance.transcription_attempt_count < 5 and is_retryable_failure(failure_data):
