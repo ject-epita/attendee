@@ -295,14 +295,13 @@ function startMeeting(signature) {
         {
             ZoomMtg.mediaCapture({record: "start", success: (success) => {
                 console.log('mediaCapture success', success);
+                window.ws.sendJson({
+                    type: 'RecordingPermissionChange',
+                    change: 'granted'
+                });
             }, error: (error) => {
                 console.log('mediaCapture error', error);
             }});
-
-            window.ws.sendJson({
-                type: 'RecordingPermissionChange',
-                change: 'granted'
-            });
         }
 
         if (permissionChange.allow === false)
@@ -349,11 +348,21 @@ function askForMediaCapturePermission() {
     // We need to wait a second to ask for permission because of this issue:
     // https://devforum.zoom.us/t/error-in-mediacapturepermission-api-typeerror-cannot-read-properties-of-undefined-reading-caps/96683/6
     setTimeout(() => {
-        // Ask for media capture permission
-        ZoomMtg.mediaCapturePermission({operate: "request", success: (success) => {
-            console.log('mediaCapturePermission success', success);
+        // Attempt to start capture
+        ZoomMtg.mediaCapture({record: "start", success: (success) => {
+            // If it succeeds, great, we're done.
+            window.ws.sendJson({
+                type: 'RecordingPermissionChange',
+                change: 'granted'
+            });
+
         }, error: (error) => {
-            console.log('mediaCapturePermission error', error);
+            // If it fails, we need to ask for permission
+            ZoomMtg.mediaCapturePermission({operate: "request", success: (success) => {
+                console.log('mediaCapturePermission success', success);
+            }, error: (error) => {
+                console.log('mediaCapturePermission error', error);
+            }});
         }});
     }, 1000);
 }
