@@ -346,12 +346,16 @@ function sendChatMessage(text) {
 window.sendChatMessage = sendChatMessage;
 
 function askForMediaCapturePermission() {
-    // Ask for media capture permission
-    ZoomMtg.mediaCapturePermission({operate: "request", success: (success) => {
-        console.log('mediaCapturePermission success', success);
-    }, error: (error) => {
-        console.log('mediaCapturePermission error', error);
-    }});
+    // We need to wait a second to ask for permission because of this issue:
+    // https://devforum.zoom.us/t/error-in-mediacapturepermission-api-typeerror-cannot-read-properties-of-undefined-reading-caps/96683/6
+    setTimeout(() => {
+        // Ask for media capture permission
+        ZoomMtg.mediaCapturePermission({operate: "request", success: (success) => {
+            console.log('mediaCapturePermission success', success);
+        }, error: (error) => {
+            console.log('mediaCapturePermission error', error);
+        }});
+    }, 1000);
 }
 
 window.askForMediaCapturePermission = askForMediaCapturePermission;
