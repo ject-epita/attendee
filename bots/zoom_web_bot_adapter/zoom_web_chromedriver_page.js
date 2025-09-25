@@ -3,18 +3,17 @@ ZoomMtg.prepareWebSDK()
 
 var zoomInitialData = window.zoomInitialData;
 
-var authEndpoint = ''
+var authEndpoint = '';
 var sdkKey = zoomInitialData.sdkKey;
 var meetingNumber = zoomInitialData.meetingNumber;
 var passWord = zoomInitialData.meetingPassword;
-var role = 0
+var role = 0;
 var userName = initialData.botName;
-var userEmail = ''
-var registrantToken = ''
-var zakToken = ''
-var leaveUrl = 'https://zoom.us'
-var registrantToken = ''
-var zakToken = ''
+var userEmail = '';
+var registrantToken = '';
+var recordingToken = zoomInitialData.joinToken || zoomInitialData.appPrivilegeToken;
+var zakToken = zoomInitialData.zakToken;
+var leaveUrl = 'https://zoom.us';
 var userEnteredMeeting = false;
 
 class TranscriptMessageFinalizationManager {
@@ -105,6 +104,7 @@ function startMeeting(signature) {
             userName: userName,
             userEmail: userEmail,
             tk: registrantToken,
+            recordingToken: recordingToken,
             zak: zakToken,
             success: (success) => {
                 console.log('join success');
