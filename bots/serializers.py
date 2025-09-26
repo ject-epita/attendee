@@ -1444,6 +1444,7 @@ class TranscriptUtteranceSerializer(serializers.Serializer):
     speaker_name = serializers.CharField()
     speaker_uuid = serializers.CharField()
     speaker_user_uuid = serializers.CharField(allow_null=True)
+    speaker_is_host = serializers.BooleanField()
     timestamp_ms = serializers.IntegerField()
     duration_ms = serializers.IntegerField()
     transcription = serializers.JSONField()
