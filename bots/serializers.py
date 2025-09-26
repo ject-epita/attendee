@@ -1574,6 +1574,7 @@ class ParticipantEventSerializer(serializers.Serializer):
     participant_name = serializers.CharField(source="participant.full_name")
     participant_uuid = serializers.CharField(source="participant.uuid")
     participant_user_uuid = serializers.CharField(source="participant.user_uuid", allow_null=True)
+    participant_is_host = serializers.BooleanField(source="participant.is_host")
     event_type = serializers.SerializerMethodField()
     event_data = serializers.JSONField()
     timestamp_ms = serializers.IntegerField()
