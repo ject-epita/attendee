@@ -859,8 +859,8 @@ class ZoomBotAdapter(BotAdapter):
         param.meetingNumber = meeting_number
         param.userName = self.display_name
         param.psw = self.meeting_password if self.meeting_password is not None else ""
-        param.isVideoOff = False
-        param.isAudioOff = False
+        param.isVideoOff = True # Ensure video is off when we join the meeting
+        param.isAudioOff = True # Ensure audio is off when we join the meeting
         param.isAudioRawDataStereo = False
         param.isMyVoiceInMix = False
 
