@@ -714,6 +714,11 @@ class ZoomBotAdapter(BotAdapter):
 
         if not self.current_image_to_send:
             self.current_image_to_send = self.compute_current_image_to_send()
+        if not self.current_image_to_send:
+            if self.cannot_send_video_error_ticker % 100 == 0:
+                logger.info("Failed to compute current image to send so cannot send raw image, but will retry later")
+            self.cannot_send_video_error_ticker += 1
+            return True
 
         send_video_frame_response = self.video_sender.sendVideoFrame(self.current_image_to_send, self.suggested_video_cap.width, self.suggested_video_cap.height, 0, zoom.FrameDataFormat_I420_FULL)
         if send_video_frame_response != zoom.SDKERR_SUCCESS:
