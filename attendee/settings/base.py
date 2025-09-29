@@ -216,3 +216,4 @@ CHARGE_CREDITS_FOR_BOTS = os.getenv("CHARGE_CREDITS_FOR_BOTS", "false") == "true
 
 BOT_POD_NAMESPACE = os.getenv("BOT_POD_NAMESPACE", "attendee")
 WEBPAGE_STREAMER_POD_NAMESPACE = os.getenv("WEBPAGE_STREAMER_POD_NAMESPACE", "attendee-webpage-streamer")
+REQUIRE_HTTPS_WEBHOOKS = os.getenv("REQUIRE_HTTPS_WEBHOOKS", "true") == "true"
