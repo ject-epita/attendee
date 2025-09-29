@@ -4,6 +4,8 @@ import logging
 import os
 from dataclasses import asdict
 
+from django.conf import settings
+
 logger = logging.getLogger(__name__)
 
 import jsonschema
@@ -1300,9 +1302,8 @@ class CreateBotSerializer(BotValidationMixin, serializers.Serializer):
                 raise serializers.ValidationError("All keys in metadata must be strings")
 
         # Make sure the total length of the stringified metadata is less than MAX_METADATA_LENGTH characters
-        max_metadata_length = os.getenv("MAX_METADATA_LENGTH", 1000)
-        if len(json.dumps(value)) > max_metadata_length:
-            raise serializers.ValidationError(f"Metadata must be less than {max_metadata_length} characters")
+        if len(json.dumps(value)) > settings.MAX_METADATA_LENGTH:
+            raise serializers.ValidationError(f"Metadata must be less than {settings.MAX_METADATA_LENGTH} characters")
 
         return value
 
@@ -1642,9 +1643,8 @@ class CreateCalendarSerializer(serializers.Serializer):
                 raise serializers.ValidationError("All keys in metadata must be strings")
 
         # Make sure the total length of the stringified metadata is less than MAX_METADATA_LENGTH characters
-        max_metadata_length = os.getenv("MAX_METADATA_LENGTH", 1000)
-        if len(json.dumps(value)) > max_metadata_length:
-            raise serializers.ValidationError(f"Metadata must be less than {max_metadata_length} characters")
+        if len(json.dumps(value)) > settings.MAX_METADATA_LENGTH:
+            raise serializers.ValidationError(f"Metadata must be less than {settings.MAX_METADATA_LENGTH} characters")
 
         return value
 
@@ -1788,9 +1788,8 @@ class PatchCalendarSerializer(serializers.Serializer):
                 raise serializers.ValidationError("All keys in metadata must be strings")
 
         # Make sure the total length of the stringified metadata is less than MAX_METADATA_LENGTH characters
-        max_metadata_length = os.getenv("MAX_METADATA_LENGTH", 1000)
-        if len(json.dumps(value)) > max_metadata_length:
-            raise serializers.ValidationError(f"Metadata must be less than {max_metadata_length} characters")
+        if len(json.dumps(value)) > settings.MAX_METADATA_LENGTH:
+            raise serializers.ValidationError(f"Metadata must be less than {settings.MAX_METADATA_LENGTH} characters")
 
         return value
 
