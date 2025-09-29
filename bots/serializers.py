@@ -1641,7 +1641,7 @@ class CreateCalendarSerializer(serializers.Serializer):
             if not isinstance(key, str):
                 raise serializers.ValidationError("All keys in metadata must be strings")
 
-        # Make sure the total length of the stringified metadata is less than 1000 characters
+        # Make sure the total length of the stringified metadata is less than MAX_METADATA_LENGTH characters
         max_metadata_length = os.getenv("MAX_METADATA_LENGTH", 1000)
         if len(json.dumps(value)) > max_metadata_length:
             raise serializers.ValidationError(f"Metadata must be less than {max_metadata_length} characters")
@@ -1787,7 +1787,7 @@ class PatchCalendarSerializer(serializers.Serializer):
             if not isinstance(key, str):
                 raise serializers.ValidationError("All keys in metadata must be strings")
 
-        # Make sure the total length of the stringified metadata is less than 1000 characters
+        # Make sure the total length of the stringified metadata is less than MAX_METADATA_LENGTH characters
         max_metadata_length = os.getenv("MAX_METADATA_LENGTH", 1000)
         if len(json.dumps(value)) > max_metadata_length:
             raise serializers.ValidationError(f"Metadata must be less than {max_metadata_length} characters")
