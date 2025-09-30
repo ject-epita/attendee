@@ -182,6 +182,7 @@ class GoogleMeetUIMethods:
                 captions_button = WebDriverWait(self.driver, 1).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'button[aria-label="Turn on captions"]')))
                 logger.info("Captions button found")
                 self.click_element(captions_button, "click_captions_button")
+                logger.info("Waiting for captions to be enabled...")
                 WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'button[aria-label="Turn off captions"]')))
                 logger.info("Confirmed captions were enabled")
                 return
