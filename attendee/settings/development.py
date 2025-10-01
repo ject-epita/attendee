@@ -3,7 +3,7 @@ import os
 from .base import *
 
 DEBUG = True
-ALLOWED_HOSTS = ["tendee-stripe-hooks.ngrok.io", "localhost", "attendee.ject.fr"]
+ALLOWED_HOSTS = ["tendee-stripe-hooks.ngrok.io", "localhost", "attendee.ject.fr", "*"]
 
 DATABASES = {
     "default": {
