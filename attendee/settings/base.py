@@ -199,6 +199,9 @@ STORAGES = {
     "default": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
 }
 AWS_S3_SIGNATURE_VERSION = "s3v4"
 if os.getenv("USE_IRSA_FOR_S3_STORAGE", "false") == "true":
