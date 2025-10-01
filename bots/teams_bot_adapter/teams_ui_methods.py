@@ -69,14 +69,13 @@ class TeamsUIMethods:
         else:
             logger.info("Camera button is already off, not clicking it")
 
-    def is_teams_live_meeting(self):
-        return "teams.live.com" in self.driver.current_url
+    def join_now_button_is_present(self):
+        join_button = self.find_element_by_selector(By.CSS_SELECTOR, '[data-tid="prejoin-join-button"]')
+        if join_button:
+            return True
+        return False
 
     def fill_out_name_input(self):
-        # Teams live meetings always have you fill out your name even if you're logged in
-        if self.teams_bot_login_credentials and not self.is_teams_live_meeting():
-            return
-
         num_attempts = 30
         logger.info("Waiting for the name input field...")
         for attempt_index in range(num_attempts):
@@ -87,6 +86,10 @@ class TeamsUIMethods:
                 return
             except TimeoutException as e:
                 self.look_for_microsoft_login_form_element("name_input")
+
+                if self.teams_bot_login_credentials and self.join_now_button_is_present():
+                    logger.info("Join now button is present. Assuming name input is not present because we don't need to fill it out, so returning.")
+                    return
 
                 last_check_timed_out = attempt_index == num_attempts - 1
                 if last_check_timed_out:
