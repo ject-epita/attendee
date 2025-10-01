@@ -2,7 +2,7 @@ import os
 
 from .base import *
 
-DEBUG = True
+DEBUG = False
 ALLOWED_HOSTS = ["tendee-stripe-hooks.ngrok.io", "localhost", "attendee.ject.fr"]
 CSRF_TRUSTED_ORIGINS = [
     "https://attendee.ject.fr",
