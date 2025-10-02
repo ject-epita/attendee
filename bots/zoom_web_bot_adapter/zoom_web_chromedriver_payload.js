@@ -202,7 +202,11 @@ const handleAudioTrack = async (event) => {
 class StyleManager {
     constructor() {
         this.meetingAudioStream = null;
-        this.screenAudioStream = null;
+        this.audioStreams = []
+    }
+
+    addAudioStream(audioStream) {
+        this.audioStreams.push(audioStream);
     }
 
     async start() {
@@ -215,9 +219,14 @@ class StyleManager {
 
         this.audioContext = new AudioContext({ sampleRate: 48000 });
 
-        this.audioTracks = window.all_audio_context_streams.map(stream => {
+        // Combine the audioStreams we've accumulated with anything from audioElements in the DOM.
+        const audioStreamTracks = this.audioStreams.map(stream => {
             return stream.getAudioTracks()[0];
+        })
+        const audioElementTracks = Array.from(audioElements).map(audioElement => {
+            return audioElement.srcObject.getAudioTracks()[0];
         });
+        this.audioTracks = audioStreamTracks.concat(audioElementTracks);
 
         this.audioSources = this.audioTracks.map(track => {
             const mediaStream = new MediaStream([track]);
@@ -234,33 +243,13 @@ class StyleManager {
 
         this.meetingAudioStream = destination.stream;
 
-        handleAudioTrack({track: this.meetingAudioStream.getAudioTracks()[0]});
-
-        /*
-        try{
-            this.screenAudioStream = await navigator.mediaDevices.getDisplayMedia({
-                    audio: true,
-                    video: true
-                });
-                ws.sendJson({
-                    type: 'ScreenAudioStream',
-                    stream: !!this.screenAudioStream,
-                    numAudioTracks: this.screenAudioStream.getAudioTracks().length
-                });
-
-            const audioTracks = this.screenAudioStream.getAudioTracks();
-            for (const audioTrack of audioTracks) {
-                handleAudioTrack({track: audioTrack});
-            }
+        if (this.meetingAudioStream.getAudioTracks().length == 0)
+        {
+            console.log("this.meetingAudioStream.getAudioTracks() had length 0")
+            return;
         }
-        catch (error) {
-            ws.sendJson({
-                type: 'Error',
-                message: error.message
-            });
-        }*/
-    
 
+        handleAudioTrack({track: this.meetingAudioStream.getAudioTracks()[0]});  
     }
     
     getMeetingAudioStream() {
@@ -581,18 +570,16 @@ class AudioContextInterceptor {
     }
 }
 
-window.all_audio_context_streams = new Array(0);
-
+// This code intercepts the connect method on the AudioNode class
+// When something is connected to the speaker the underlying track is added to our styleManager
+// so that it can be aggregated into a stream representing the meeting audio
 (() => {
     const origConnect = AudioNode.prototype.connect;
   
     AudioNode.prototype.connect = function(target, ...rest) {
       // Only intercept connections directly to the speakers
-      console.log('rawtarget', target);
       if (target instanceof AudioDestinationNode) {
         const ctx = this.context;
-        console.log("chawtarg", ctx.__captureTee);
-  
         // Create a single tee per context
         if (!ctx.__captureTee) {
         try{
@@ -601,9 +588,9 @@ window.all_audio_context_streams = new Array(0);
           origConnect.call(tee, ctx.destination); // keep normal playback
           origConnect.call(tee, tap);             // capture
           ctx.__captureTee = { tee, tap };
-          console.log("Captured some shit", tee);
           const capturedStream = tap.stream;
-          all_audio_context_streams.push(capturedStream);
+          if (capturedStream)
+            window.styleManager.addAudioStream(capturedStream);
         }
         catch (error) {
             console.error('Error in AudioContextInterceptor:', error);
