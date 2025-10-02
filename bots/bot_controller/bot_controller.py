@@ -176,7 +176,6 @@ class BotController:
         else:
             add_audio_chunk_callback = None
 
-
         zoom_oauth_credentials = self.get_zoom_oauth_credentials()
 
         zoom_tokens = {}
