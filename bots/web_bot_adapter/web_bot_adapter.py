@@ -290,9 +290,9 @@ class WebBotAdapter(BotAdapter):
             # Convert the float32 audio data to numpy array
             audio_data = np.frombuffer(message[(5 + participant_id_length) :], dtype=np.float32)
 
-            audio_volume_rms = np.sqrt(np.mean(audio_data ** 2))
+            #audio_volume_rms = np.sqrt(np.mean(audio_data ** 2))
 
-            logger.info(f"received per participant audio from {participant_id} with length {len(audio_data)} and volume {audio_volume_rms}")
+            #logger.info(f"received per participant audio from {participant_id} with length {len(audio_data)}")
 
             # Convert float32 to PCM 16-bit by multiplying by 32768.0
             audio_data = (audio_data * 32768.0).astype(np.int16)

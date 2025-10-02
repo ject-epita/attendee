@@ -147,8 +147,6 @@ const handleAudioTrack = async (event) => {
                   //    return;
                   //}
 
-                  console.log('audioData', audioData);
-
                   // Add to queue with timestamp - the background thread will process it
                   audioDataQueue.push({
                     audioArrivalTime: Date.now(),
@@ -215,7 +213,7 @@ class StyleManager {
         // Retrieve all <audio> elements on the page
         const audioElements = document.querySelectorAll('audio');
 
-        this.audioContext = new AudioContext();
+        this.audioContext = new AudioContext({ sampleRate: 48000 });
 
         this.audioTracks = window.all_audio_context_streams.map(stream => {
             return stream.getAudioTracks()[0];
@@ -472,7 +470,7 @@ class UserManager {
 
     convertUser(zoomUser) {
         return {
-            deviceId: zoomUser.userId,
+            deviceId: zoomUser.userId.toString(),
             displayName: zoomUser.userName,
             fullName: zoomUser.userName,
             profile: '',
