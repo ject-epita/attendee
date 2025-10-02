@@ -7,11 +7,6 @@ import threading
 import time
 from time import sleep
 
-import http.server
-import socket
-import socketserver
-from http import HTTPStatus
-
 import numpy as np
 import requests
 from pyvirtualdisplay import Display
@@ -110,77 +105,6 @@ class WebBotAdapter(BotAdapter):
         self.webpage_streamer_service_hostname = webpage_streamer_service_hostname
 
         self.webpage_streamer_keepalive_task = None
-
-        self.http_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "zoom_web_chromedriver_page.html")
-        self.http_port = None
-        self.http_server = None
-        self.http_thread = None
-
-    def _find_available_port(self, start_port: int, max_tries: int = 10) -> int:
-        port = start_port
-        for _ in range(max_tries):
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                try:
-                    s.bind(("127.0.0.1", port))
-                    return port
-                except OSError:
-                    port += 1
-        raise Exception(f"Could not find available HTTP port after {max_tries} attempts starting at {start_port}")
-
-    def run_http_server(self, start_port: int = 8080):
-        """
-        Starts a tiny HTTP server on localhost that serves self.http_file_path at /zoombot
-        """
-        if not self.http_file_path:
-            logger.info("HTTP server not started because no http_file_path was provided.")
-            return
-
-        class ZoomBotHandler(http.server.BaseHTTPRequestHandler):
-            # Silence default logging to keep your logs clean
-            def log_message(self, fmt, *args):
-                logger.debug("HTTP: " + fmt % args)
-
-            def do_GET(self):
-                logger.info(f"do_GET called with path {self.path}")
-                if self.path == "/zoom_web_chromedriver_page.html" or self.path == "/zoom-meeting-4.0.0.min.js" or self.path == "/zoom_web_chromedriver_page.js" or self.path == "/zoom_web_chromedriver_page.css":
-                    fullfilepath = f"bots/zoom_web_bot_adapter{self.path}"
-                    logger.info(f"fullfilepath {fullfilepath}")
-                    try:
-                        with open(fullfilepath, "rb") as f:
-                            content = f.read()
-                        self.send_response(HTTPStatus.OK)
-                        self.send_header("Content-Type", "text/html; charset=utf-8")
-                        self.send_header("Content-Length", str(len(content)))
-                        self.end_headers()
-                        self.wfile.write(content)
-                    except FileNotFoundError:
-                        self.send_error(HTTPStatus.NOT_FOUND, "HTML file not found")
-                    except Exception as e:
-                        logger.exception(f"Error serving /zoombot: {e}")
-                        self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, "Internal server error")
-                else:
-                    self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
-
-        # find an available port
-        port = self._find_available_port(start_port)
-        self.http_port = port
-
-        # Threading HTTP server so it doesn't block
-        class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
-            daemon_threads = True
-            allow_reuse_address = True
-
-        httpd = ThreadingHTTPServer(("127.0.0.1", port), ZoomBotHandler)
-        httpd.zoombot_file_path = self.http_file_path  # pass the path into the server instance
-        self.http_server = httpd
-        logger.info(f"HTTP server started on http://localhost:{port}/zoombot (serving {self.http_file_path})")
-
-        try:
-            httpd.serve_forever()
-        except Exception as e:
-            logger.info(f"HTTP server stopped: {e}")
-
 
     def pause_recording(self):
         self.recording_paused = True
@@ -289,10 +213,6 @@ class WebBotAdapter(BotAdapter):
 
             # Convert the float32 audio data to numpy array
             audio_data = np.frombuffer(message[(5 + participant_id_length) :], dtype=np.float32)
-
-            #audio_volume_rms = np.sqrt(np.mean(audio_data ** 2))
-
-            #logger.info(f"received per participant audio from {participant_id} with length {len(audio_data)}")
 
             # Convert float32 to PCM 16-bit by multiplying by 32768.0
             audio_data = (audio_data * 32768.0).astype(np.int16)
@@ -502,8 +422,8 @@ class WebBotAdapter(BotAdapter):
         options = webdriver.ChromeOptions()
 
         options.add_argument("--autoplay-policy=no-user-gesture-required")
-        #options.add_argument("--use-fake-device-for-media-stream")
-        #options.add_argument("--use-fake-ui-for-media-stream")
+        options.add_argument("--use-fake-device-for-media-stream")
+        options.add_argument("--use-fake-ui-for-media-stream")
         options.add_argument(f"--window-size={self.video_frame_size[0]},{self.video_frame_size[1]}")
         options.add_argument("--start-fullscreen")
         # options.add_argument('--headless=new')
@@ -512,8 +432,6 @@ class WebBotAdapter(BotAdapter):
         options.add_argument("--disable-application-cache")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-blink-features=AutomationControlled")
-        # auto accept share page audio request
-
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
 
         if os.getenv("ENABLE_CHROME_SANDBOX", "false").lower() != "true":
@@ -591,10 +509,6 @@ class WebBotAdapter(BotAdapter):
         # Start websocket server in a separate thread
         websocket_thread = threading.Thread(target=self.run_websocket_server, daemon=True)
         websocket_thread.start()
-
-        if self.http_file_path:
-            self.http_thread = threading.Thread(target=self.run_http_server, kwargs={"start_port": 8080}, daemon=True)
-            self.http_thread.start()
 
         sleep(0.5)  # Give the websocketserver time to start
         if not self.websocket_port:
@@ -789,12 +703,6 @@ class WebBotAdapter(BotAdapter):
                 self.websocket_server.shutdown()
             except Exception as e:
                 logger.info(f"Error shutting down websocket server: {e}")
-
-        if self.http_server:
-            try:
-                self.http_server.shutdown()
-            except Exception as e:
-                logger.info(f"Error shutting down HTTP server: {e}")
 
         # If we launched a webpage streamer, send a shutdown request
         if self.voice_agent_url:
