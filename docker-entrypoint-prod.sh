@@ -3,19 +3,61 @@ set -e
 
 echo "Starting production initialization..."
 
-# Wait for postgres to be ready
+# Wait for postgres to be ready using Python
 echo "Waiting for PostgreSQL..."
-while ! nc -z postgres 5432; do
-  sleep 0.1
-done
-echo "PostgreSQL started"
+python << END
+import socket
+import time
+import sys
 
-# Wait for redis to be ready
+host = "postgres"
+port = 5432
+max_retries = 30
+retry_interval = 1
+
+for i in range(max_retries):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        sock.connect((host, port))
+        sock.close()
+        print(f"PostgreSQL is ready!")
+        sys.exit(0)
+    except (socket.error, socket.timeout):
+        if i < max_retries - 1:
+            time.sleep(retry_interval)
+        else:
+            print(f"Failed to connect to PostgreSQL after {max_retries} attempts")
+            sys.exit(1)
+END
+
+# Wait for redis to be ready using Python
 echo "Waiting for Redis..."
-while ! nc -z redis 6379; do
-  sleep 0.1
-done
-echo "Redis started"
+python << END
+import socket
+import time
+import sys
+
+host = "redis"
+port = 6379
+max_retries = 30
+retry_interval = 1
+
+for i in range(max_retries):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        sock.connect((host, port))
+        sock.close()
+        print(f"Redis is ready!")
+        sys.exit(0)
+    except (socket.error, socket.timeout):
+        if i < max_retries - 1:
+            time.sleep(retry_interval)
+        else:
+            print(f"Failed to connect to Redis after {max_retries} attempts")
+            sys.exit(1)
+END
 
 # Run migrations
 echo "Running database migrations..."
