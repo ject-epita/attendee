@@ -247,7 +247,8 @@ class StyleManager {
             return;
         }
 
-        handleAudioTrack({track: this.meetingAudioStream.getAudioTracks()[0]});  
+        if (initialData.sendPerParticipantAudio)
+            handleAudioTrack({track: this.meetingAudioStream.getAudioTracks()[0]});  
     }
     
     getMeetingAudioStream() {
