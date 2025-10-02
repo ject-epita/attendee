@@ -3,6 +3,7 @@ services:
     build: ./
     volumes:
      - .:/attendee
+     - staticfiles:/attendee/staticfiles
     networks:
       - attendee_network
     environment:
@@ -17,6 +18,7 @@ services:
       - DJANGO_SETTINGS_MODULE=attendee.settings.production
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - CREDENTIALS_ENCRYPTION_KEY=${CREDENTIALS_ENCRYPTION_KEY}
+      - SECURE_SSL_REDIRECT=${SECURE_SSL_REDIRECT:-false}
       
       # AWS/S3 Configuration (MinIO)
       - AWS_ENDPOINT_URL=http://minio:9000
@@ -56,6 +58,7 @@ services:
     build: ./
     volumes:
      - .:/attendee
+     - staticfiles:/attendee/staticfiles
     networks:
       - attendee_network
     environment:
@@ -70,6 +73,7 @@ services:
       - DJANGO_SETTINGS_MODULE=attendee.settings.production
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - CREDENTIALS_ENCRYPTION_KEY=${CREDENTIALS_ENCRYPTION_KEY}
+      - SECURE_SSL_REDIRECT=${SECURE_SSL_REDIRECT:-false}
       
       # AWS/S3 Configuration (MinIO)
       - AWS_ENDPOINT_URL=http://minio:9000
@@ -100,6 +104,7 @@ services:
     build: ./
     volumes:
      - .:/attendee
+     - staticfiles:/attendee/staticfiles
     networks:
       - attendee_network
     ports:
@@ -116,6 +121,7 @@ services:
       - DJANGO_SETTINGS_MODULE=attendee.settings.production
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - CREDENTIALS_ENCRYPTION_KEY=${CREDENTIALS_ENCRYPTION_KEY}
+      - SECURE_SSL_REDIRECT=${SECURE_SSL_REDIRECT:-false}
       
       # AWS/S3 Configuration (MinIO)
       - AWS_ENDPOINT_URL=http://minio:9000
@@ -139,7 +145,7 @@ services:
       - PROJECT_POST_THROTTLE_RATE=3000/min
       - DISABLE_SIGNUP=${DISABLE_SIGNUP:-false}
     command: gunicorn attendee.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 2 --timeout 120 --access-logfile - --error-logfile -
-    entrypoint: []
+    entrypoint: ["/bin/bash", "/attendee/docker-entrypoint-prod.sh"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -245,3 +251,4 @@ volumes:
   postgres:
   redis:
   minio:
+  staticfiles:
