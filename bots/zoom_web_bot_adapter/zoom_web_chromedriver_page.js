@@ -142,7 +142,17 @@ function startMeeting(signature) {
     })
 
     ZoomMtg.inMeetingServiceListener('onActiveSpeaker', function (data) {
-        console.log('onActiveSpeaker', data);
+        /*
+        [
+            {
+                "userId": 16778240,
+                "userName": "Noah Duncan"
+            }
+        ]
+        */
+        for (const activeSpeaker of data) {
+            window.dominantSpeakerManager.addCaptionAudioTime(Date.now(), activeSpeaker.userId);
+        }
         // Use active speaker events to determine if we are silent or not
         window.ws.sendJson({
             type: 'SilenceStatus',
@@ -193,6 +203,9 @@ function startMeeting(signature) {
             });
             return;
         }
+
+        if (!window.initialData.collectCaptions)
+            return;
 
         transcriptMessageFinalizationManager.addMessage(item);
     });

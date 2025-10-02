@@ -1,7 +1,210 @@
+class DominantSpeakerManager {
+    constructor() {
+        this.dominantSpeakerStreamId = null;
+        this.captionAudioTimes = [];
+    }
+
+    getLastSpeakerIdForTimestampMs(timestampMs) {
+        // Find the caption audio times that are before timestampMs
+        const captionAudioTimesBeforeTimestampMs = this.captionAudioTimes.filter(captionAudioTime => captionAudioTime.timestampMs <= timestampMs);
+        if (captionAudioTimesBeforeTimestampMs.length === 0) {
+            return null;
+        }
+        // Return the caption audio time with the highest timestampMs
+        return captionAudioTimesBeforeTimestampMs.reduce((max, captionAudioTime) => captionAudioTime.timestampMs > max.timestampMs ? captionAudioTime : max).speakerId;
+    }
+
+    addCaptionAudioTime(timestampMs, speakerId) {
+        this.captionAudioTimes.push({
+            timestampMs: timestampMs,
+            speakerId: speakerId
+        });
+    }
+
+    //a=function(e){var t,n=(0,o.H)()?i.A.WEBINAR_BIT_VAL:i.A.MEETING_BIT_VAL;return t=(0,r.Ax)()&&(0,r.oX)()?i.A.WEBRTC_AUDIO_V2_BIT_VAL:(0,r.Ax)()?i.A.WEBRTC_AUDIO_BIT_VAL:i.A.WASM_AUDIO_BIT_VAL,"".concat(n).concat(t).concat((null==e?void 0:e.useWBVideo)?i.A.WEBRTC_VIDEO_BIT_VAL:i.A.WASM_VIDEO_BIT_VAL)}}
+
+    setDominantSpeakerStreamId(dominantSpeakerStreamId) {
+        this.dominantSpeakerStreamId = dominantSpeakerStreamId.toString();
+    }
+
+    getDominantSpeaker() {
+        return virtualStreamToPhysicalStreamMappingManager.virtualStreamIdToParticipant(this.dominantSpeakerStreamId);
+    }
+}
+
+const handleAudioTrack = async (event) => {
+    let lastAudioFormat = null;  // Track last seen format
+    const audioDataQueue = [];
+    const ACTIVE_SPEAKER_LATENCY_MS = 2000;
+    
+    // Start continuous background processing of the audio queue
+    const processAudioQueue = () => {
+        while (audioDataQueue.length > 0 && 
+            Date.now() - audioDataQueue[0].audioArrivalTime >= ACTIVE_SPEAKER_LATENCY_MS) {
+            const { audioData, audioArrivalTime } = audioDataQueue.shift();
+
+            // Get the dominant speaker and assume that's who the participant speaking is
+            const dominantSpeakerId = dominantSpeakerManager.getLastSpeakerIdForTimestampMs(audioArrivalTime);
+
+            // Send audio data through websocket
+            if (dominantSpeakerId) {
+                ws.sendPerParticipantAudio(dominantSpeakerId, audioData);
+            }
+        }
+    };
+
+    // Set up background processing every 100ms
+    const queueProcessingInterval = setInterval(processAudioQueue, 100);
+    
+    // Clean up interval when track ends
+    event.track.addEventListener('ended', () => {
+        clearInterval(queueProcessingInterval);
+        console.log('Audio track ended, cleared queue processing interval');
+    });
+
+    window.ws.sendJson({
+        type: 'AudioTrackStarted',
+        trackId: event.track.id
+    });
+    
+    try {
+      // Create processor to get raw frames
+      const processor = new MediaStreamTrackProcessor({ track: event.track });
+      const generator = new MediaStreamTrackGenerator({ kind: 'audio' });
+      
+      // Get readable stream of audio frames
+      const readable = processor.readable;
+      const writable = generator.writable;
+  
+      // Transform stream to intercept frames
+      const transformStream = new TransformStream({
+          async transform(frame, controller) {
+              if (!frame) {
+                  return;
+              }
+  
+              try {
+                  // Check if controller is still active
+                  if (controller.desiredSize === null) {
+                      frame.close();
+                      return;
+                  }
+  
+                  // Copy the audio data
+                  const numChannels = frame.numberOfChannels;
+                  const numSamples = frame.numberOfFrames;
+                  const audioData = new Float32Array(numSamples);
+                  
+                  // Copy data from each channel
+                  // If multi-channel, average all channels together
+                  if (numChannels > 1) {
+                      // Temporary buffer to hold each channel's data
+                      const channelData = new Float32Array(numSamples);
+                      
+                      // Sum all channels
+                      for (let channel = 0; channel < numChannels; channel++) {
+                          frame.copyTo(channelData, { planeIndex: channel });
+                          for (let i = 0; i < numSamples; i++) {
+                              audioData[i] += channelData[i];
+                          }
+                      }
+                      
+                      // Average by dividing by number of channels
+                      for (let i = 0; i < numSamples; i++) {
+                          audioData[i] /= numChannels;
+                      }
+                  } else {
+                      // If already mono, just copy the data
+                      frame.copyTo(audioData, { planeIndex: 0 });
+                  }
+  
+                  // console.log('frame', frame)
+                  // console.log('audioData', audioData)
+  
+                  // Check if audio format has changed
+                  const currentFormat = {
+                      numberOfChannels: 1,
+                      originalNumberOfChannels: frame.numberOfChannels,
+                      numberOfFrames: frame.numberOfFrames,
+                      sampleRate: frame.sampleRate,
+                      format: frame.format,
+                      duration: frame.duration
+                  };
+  
+                  // If format is different from last seen format, send update
+                  if (!lastAudioFormat || 
+                      JSON.stringify(currentFormat) !== JSON.stringify(lastAudioFormat)) {
+                      lastAudioFormat = currentFormat;
+                      ws.sendJson({
+                          type: 'AudioFormatUpdate',
+                          format: currentFormat
+                      });
+                  }
+  
+                  // If the audioData buffer is all zeros, we still want to send it. It's only one mixed audio stream.
+                  // It seems to help with the transcription.
+                  //if (audioData.every(value => value === 0)) {
+                  //    return;
+                  //}
+
+                  console.log('audioData', audioData);
+
+                  // Add to queue with timestamp - the background thread will process it
+                  audioDataQueue.push({
+                    audioArrivalTime: Date.now(),
+                    audioData: audioData
+                  });
+
+                  // Pass through the original frame
+                  controller.enqueue(frame);
+              } catch (error) {
+                  console.error('Error processing frame:', error);
+                  frame.close();
+              }
+          },
+          flush() {
+              console.log('Transform stream flush called');
+              // Clear the interval when the stream ends
+              clearInterval(queueProcessingInterval);
+          }
+      });
+  
+      // Create an abort controller for cleanup
+      const abortController = new AbortController();
+  
+      try {
+          // Connect the streams
+          await readable
+              .pipeThrough(transformStream)
+              .pipeTo(writable, {
+                  signal: abortController.signal
+              })
+              .catch(error => {
+                  if (error.name !== 'AbortError') {
+                      console.error('Pipeline error:', error);
+                  }
+                  // Clear the interval on error
+                  clearInterval(queueProcessingInterval);
+              });
+      } catch (error) {
+          console.error('Stream pipeline error:', error);
+          abortController.abort();
+          // Clear the interval on error
+          clearInterval(queueProcessingInterval);
+      }
+  
+    } catch (error) {
+        console.error('Error setting up audio interceptor:', error);
+        // Clear the interval on error
+        clearInterval(queueProcessingInterval);
+    }
+  };
+
 // Style manager
 class StyleManager {
     constructor() {
         this.meetingAudioStream = null;
+        this.screenAudioStream = null;
     }
 
     async start() {
@@ -14,8 +217,8 @@ class StyleManager {
 
         this.audioContext = new AudioContext();
 
-        this.audioTracks = Array.from(audioElements).map(audioElement => {
-            return audioElement.srcObject.getAudioTracks()[0];
+        this.audioTracks = window.all_audio_context_streams.map(stream => {
+            return stream.getAudioTracks()[0];
         });
 
         this.audioSources = this.audioTracks.map(track => {
@@ -32,6 +235,34 @@ class StyleManager {
         });
 
         this.meetingAudioStream = destination.stream;
+
+        handleAudioTrack({track: this.meetingAudioStream.getAudioTracks()[0]});
+
+        /*
+        try{
+            this.screenAudioStream = await navigator.mediaDevices.getDisplayMedia({
+                    audio: true,
+                    video: true
+                });
+                ws.sendJson({
+                    type: 'ScreenAudioStream',
+                    stream: !!this.screenAudioStream,
+                    numAudioTracks: this.screenAudioStream.getAudioTracks().length
+                });
+
+            const audioTracks = this.screenAudioStream.getAudioTracks();
+            for (const audioTrack of audioTracks) {
+                handleAudioTrack({track: audioTrack});
+            }
+        }
+        catch (error) {
+            ws.sendJson({
+                type: 'Error',
+                message: error.message
+            });
+        }*/
+    
+
     }
     
     getMeetingAudioStream() {
@@ -327,10 +558,72 @@ class UserManager {
         }
     }
 }
+
+class AudioContextInterceptor {
+    constructor(callbacks) {
+        // Store the original AudioContext
+        const originalAudioContext = window.AudioContext;
+        
+        // Store callbacks
+        const onAudioContextCreate = callbacks.onAudioContextCreate || (() => {});
+        
+        // Override the RTCPeerConnection constructor
+        window.AudioContext = function(...args) {
+            // Create instance using the original constructor
+            const audioContext = Reflect.construct(
+                originalAudioContext, 
+                args
+            );
+            
+            // Notify about the creation
+            onAudioContextCreate(audioContext);
+
+            return audioContext;
+        };
+    }
+}
+
+window.all_audio_context_streams = new Array(0);
+
+(() => {
+    const origConnect = AudioNode.prototype.connect;
   
+    AudioNode.prototype.connect = function(target, ...rest) {
+      // Only intercept connections directly to the speakers
+      console.log('rawtarget', target);
+      if (target instanceof AudioDestinationNode) {
+        const ctx = this.context;
+        console.log("chawtarg", ctx.__captureTee);
+  
+        // Create a single tee per context
+        if (!ctx.__captureTee) {
+        try{
+          const tee = ctx.createGain();
+          const tap = ctx.createMediaStreamDestination();
+          origConnect.call(tee, ctx.destination); // keep normal playback
+          origConnect.call(tee, tap);             // capture
+          ctx.__captureTee = { tee, tap };
+          console.log("Captured some shit", tee);
+          const capturedStream = tap.stream;
+          all_audio_context_streams.push(capturedStream);
+        }
+        catch (error) {
+            console.error('Error in AudioContextInterceptor:', error);
+        }
+        }
+  
+        // Reroute to the tee instead of the destination
+        return origConnect.call(this, ctx.__captureTee.tee, ...rest);
+      }
+  
+      return origConnect.call(this, target, ...rest);
+    };
+  })();
 
 const ws = new WebSocketClient();
 window.ws = ws;
+const dominantSpeakerManager = new DominantSpeakerManager();
+window.dominantSpeakerManager = dominantSpeakerManager;
 const styleManager = new StyleManager();
 window.styleManager = styleManager;
 const userManager = new UserManager(ws);
