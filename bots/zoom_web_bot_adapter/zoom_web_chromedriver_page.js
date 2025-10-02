@@ -217,7 +217,7 @@ function startMeeting(signature) {
             window.ws.sendJson({
                 type: 'ChatMessage',
                 message_uuid: chatMessage.content.messageId,
-                participant_uuid: chatMessage.senderId,
+                participant_uuid: chatMessage.senderId.toString(),
                 timestamp: Math.floor(parseInt(chatMessage.content.t) / 1000),
                 text: chatMessage.content.text,
             });

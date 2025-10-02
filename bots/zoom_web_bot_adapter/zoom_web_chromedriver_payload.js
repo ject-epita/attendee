@@ -21,8 +21,6 @@ class DominantSpeakerManager {
         });
     }
 
-    //a=function(e){var t,n=(0,o.H)()?i.A.WEBINAR_BIT_VAL:i.A.MEETING_BIT_VAL;return t=(0,r.Ax)()&&(0,r.oX)()?i.A.WEBRTC_AUDIO_V2_BIT_VAL:(0,r.Ax)()?i.A.WEBRTC_AUDIO_BIT_VAL:i.A.WASM_AUDIO_BIT_VAL,"".concat(n).concat(t).concat((null==e?void 0:e.useWBVideo)?i.A.WEBRTC_VIDEO_BIT_VAL:i.A.WASM_VIDEO_BIT_VAL)}}
-
     setDominantSpeakerStreamId(dominantSpeakerStreamId) {
         this.dominantSpeakerStreamId = dominantSpeakerStreamId.toString();
     }
@@ -546,30 +544,6 @@ class UserManager {
     }
 }
 
-class AudioContextInterceptor {
-    constructor(callbacks) {
-        // Store the original AudioContext
-        const originalAudioContext = window.AudioContext;
-        
-        // Store callbacks
-        const onAudioContextCreate = callbacks.onAudioContextCreate || (() => {});
-        
-        // Override the RTCPeerConnection constructor
-        window.AudioContext = function(...args) {
-            // Create instance using the original constructor
-            const audioContext = Reflect.construct(
-                originalAudioContext, 
-                args
-            );
-            
-            // Notify about the creation
-            onAudioContextCreate(audioContext);
-
-            return audioContext;
-        };
-    }
-}
-
 // This code intercepts the connect method on the AudioNode class
 // When something is connected to the speaker the underlying track is added to our styleManager
 // so that it can be aggregated into a stream representing the meeting audio
@@ -593,7 +567,7 @@ class AudioContextInterceptor {
             window.styleManager.addAudioStream(capturedStream);
         }
         catch (error) {
-            console.error('Error in AudioContextInterceptor:', error);
+            console.error('Error in AudioNodeInterceptor:', error);
         }
         }
   
