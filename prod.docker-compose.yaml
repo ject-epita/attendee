@@ -1,0 +1,253 @@
+services:
+  attendee-worker-prod:
+    build: ./
+    volumes:
+     - .:/attendee
+    networks:
+      - attendee_network
+    environment:
+      # Database Configuration
+      - DATABASE_URL=postgresql://attendee_prod_user:${POSTGRES_PASSWORD}@postgres:5432/attendee_production
+      - POSTGRES_SSL_REQUIRE=false
+      
+      # Redis Configuration
+      - REDIS_URL=redis://redis:6379/0
+      - DISABLE_REDIS_SSL=true
+      
+      # Django Configuration
+      - DJANGO_SETTINGS_MODULE=attendee.settings.production
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - CREDENTIALS_ENCRYPTION_KEY=${CREDENTIALS_ENCRYPTION_KEY}
+      
+      # AWS/S3 Configuration (MinIO)
+      - AWS_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER:-minioadmin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - AWS_RECORDING_STORAGE_BUCKET_NAME=attendee-recordings
+      - USE_IRSA_FOR_S3_STORAGE=false
+      
+      # Email Configuration
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-noreply@mail.attendee.dev}
+      - SERVER_EMAIL=${SERVER_EMAIL:-noreply@mail.attendee.dev}
+      - ERROR_REPORTS_RECEIVER_EMAIL_ADDRESS=${ERROR_REPORTS_RECEIVER_EMAIL_ADDRESS}
+      
+      # Application Configuration
+      - ENABLE_CHROME_SANDBOX=true
+      - ATTENDEE_LOG_LEVEL=INFO
+      - TIME_ZONE=UTC
+      - REQUIRE_HTTPS_WEBHOOKS=true
+      - MAX_METADATA_LENGTH=1000
+      - PROJECT_POST_THROTTLE_RATE=3000/min
+      - DISABLE_SIGNUP=${DISABLE_SIGNUP:-false}
+    command: "celery -A attendee worker -l INFO"
+    security_opt:
+      - seccomp=./bots/web_bot_adapter/chrome_seccomp.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  attendee-scheduler-prod:
+    build: ./
+    volumes:
+     - .:/attendee
+    networks:
+      - attendee_network
+    environment:
+      # Database Configuration
+      - DATABASE_URL=postgresql://attendee_prod_user:${POSTGRES_PASSWORD}@postgres:5432/attendee_production
+      - POSTGRES_SSL_REQUIRE=false
+      
+      # Redis Configuration
+      - REDIS_URL=redis://redis:6379/0
+      - DISABLE_REDIS_SSL=true
+      
+      # Django Configuration
+      - DJANGO_SETTINGS_MODULE=attendee.settings.production
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - CREDENTIALS_ENCRYPTION_KEY=${CREDENTIALS_ENCRYPTION_KEY}
+      
+      # AWS/S3 Configuration (MinIO)
+      - AWS_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER:-minioadmin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - AWS_RECORDING_STORAGE_BUCKET_NAME=attendee-recordings
+      - USE_IRSA_FOR_S3_STORAGE=false
+      
+      # Email Configuration
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-noreply@mail.attendee.dev}
+      - SERVER_EMAIL=${SERVER_EMAIL:-noreply@mail.attendee.dev}
+      
+      # Application Configuration
+      - ATTENDEE_LOG_LEVEL=INFO
+      - TIME_ZONE=UTC
+    command: "python manage.py run_scheduler"
+    entrypoint: []
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  attendee-app-prod:
+    build: ./
+    volumes:
+     - .:/attendee
+    networks:
+      - attendee_network
+    ports:
+      - "${ATTENDEE_PORT:-8000}:8000"
+    environment:
+      # Database Configuration
+      - DATABASE_URL=postgresql://attendee_prod_user:${POSTGRES_PASSWORD}@postgres:5432/attendee_production
+      - POSTGRES_SSL_REQUIRE=false
+      
+      # Redis Configuration
+      - REDIS_URL=redis://redis:6379/0
+      - DISABLE_REDIS_SSL=true
+      
+      # Django Configuration
+      - DJANGO_SETTINGS_MODULE=attendee.settings.production
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - CREDENTIALS_ENCRYPTION_KEY=${CREDENTIALS_ENCRYPTION_KEY}
+      
+      # AWS/S3 Configuration (MinIO)
+      - AWS_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER:-minioadmin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - AWS_RECORDING_STORAGE_BUCKET_NAME=attendee-recordings
+      - USE_IRSA_FOR_S3_STORAGE=false
+      
+      # Email Configuration
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-noreply@mail.attendee.dev}
+      - SERVER_EMAIL=${SERVER_EMAIL:-noreply@mail.attendee.dev}
+      - ERROR_REPORTS_RECEIVER_EMAIL_ADDRESS=${ERROR_REPORTS_RECEIVER_EMAIL_ADDRESS}
+      
+      # Application Configuration
+      - ATTENDEE_LOG_LEVEL=INFO
+      - TIME_ZONE=UTC
+      - REQUIRE_HTTPS_WEBHOOKS=false
+      - MAX_METADATA_LENGTH=1000
+      - PROJECT_POST_THROTTLE_RATE=3000/min
+      - DISABLE_SIGNUP=${DISABLE_SIGNUP:-false}
+    command: gunicorn attendee.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 2 --timeout 120 --access-logfile - --error-logfile -
+    entrypoint: []
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  attendee-webpage-streamer-prod:
+    build: ./
+    volumes:
+     - .:/attendee
+    networks:
+      - attendee_network
+    ports:
+      - "${WEBPAGE_STREAMER_PORT:-8001}:8000"
+    environment:
+      # Django Configuration
+      - DJANGO_SETTINGS_MODULE=attendee.settings.production
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      
+      # Application Configuration
+      - ENABLE_CHROME_SANDBOX=true
+      - ATTENDEE_LOG_LEVEL=INFO
+    command: "python bots/webpage_streamer/run_webpage_streamer.py"
+    security_opt:
+      - seccomp=./bots/web_bot_adapter/chrome_seccomp.json
+    restart: unless-stopped
+    profiles:
+      - webpage-streamer
+
+  postgres:
+    image: postgres:15.3-alpine
+    environment:
+      POSTGRES_DB: attendee_production
+      POSTGRES_USER: attendee_prod_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /data/postgres
+    volumes:
+       - postgres:/data/postgres
+    networks:
+      - attendee_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U attendee_prod_user -d attendee_production"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - attendee_network
+    restart: unless-stopped
+    volumes:
+      - redis:/data/redis
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio:/data
+    networks:
+      - attendee_network
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Client to create bucket on startup
+  minio-init:
+    image: minio/mc:latest
+    networks:
+      - attendee_network
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set minio http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin};
+      mc mb minio/attendee-recordings --ignore-existing;
+      mc anonymous set download minio/attendee-recordings;
+      exit 0;
+      "
+
+networks:
+  attendee_network:
+    driver: bridge
+
+volumes:
+  postgres:
+  redis:
+  minio:
