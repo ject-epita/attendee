@@ -12,7 +12,6 @@ services:
       
       # Redis Configuration
       - REDIS_URL=redis://redis:6379/0
-      - DISABLE_REDIS_SSL=true
       
       # Django Configuration
       - DJANGO_SETTINGS_MODULE=attendee.settings.production
@@ -66,7 +65,6 @@ services:
       
       # Redis Configuration
       - REDIS_URL=redis://redis:6379/0
-      - DISABLE_REDIS_SSL=true
       
       # Django Configuration
       - DJANGO_SETTINGS_MODULE=attendee.settings.production
@@ -113,7 +111,6 @@ services:
       
       # Redis Configuration
       - REDIS_URL=redis://redis:6379/0
-      - DISABLE_REDIS_SSL=true
       
       # Django Configuration
       - DJANGO_SETTINGS_MODULE=attendee.settings.production
