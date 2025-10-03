@@ -263,7 +263,21 @@ class TeamsUIMethods:
 
         self.set_layout(self.get_layout_to_select())
 
+        if self.disable_incoming_video:
+            self.disable_incoming_video_in_ui()
+
         self.ready_to_show_bot_image()
+
+    def disable_incoming_video_in_ui(self):
+        logger.info("Waiting for the view button...")
+        view_button = self.locate_element(step="view_button", condition=EC.presence_of_element_located((By.CSS_SELECTOR, "#view-mode-button, #custom-view-button")), wait_time_seconds=60)
+        logger.info("Clicking the view button...")
+        self.click_element(view_button, "view_button")
+
+        logger.info("Waiting for the turn off incoming video button...")
+        turn_off_incoming_video_button = self.locate_element(step="turn_off_incoming_video_button", condition=EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Turn off incoming video']")), wait_time_seconds=10)
+        logger.info("Clicking the turn off incoming video button...")
+        self.click_element(turn_off_incoming_video_button, "turn_off_incoming_video_button")
 
     def click_leave_button(self):
         logger.info("Waiting for the leave button")
