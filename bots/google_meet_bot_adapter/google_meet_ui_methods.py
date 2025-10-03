@@ -303,7 +303,7 @@ class GoogleMeetUIMethods:
             wait_time_seconds=6,
         )
         logger.info("Clicking the more options button...")
-        self.click_element(more_options_button, "more_options_button")
+        self.click_element(more_options_button, "disable_incoming_video:more_options_button")
 
         logger.info("Waiting for the settings list item...")
         settings_list_item = self.locate_element(
@@ -312,7 +312,7 @@ class GoogleMeetUIMethods:
             wait_time_seconds=6,
         )
         logger.info("Clicking the settings list item...")
-        self.click_element(settings_list_item, "settings_list_item")
+        self.click_element(settings_list_item, "disable_incoming_video:settings_list_item")
 
         logger.info("Waiting for the video button...")
         video_button = self.locate_element(
@@ -321,7 +321,7 @@ class GoogleMeetUIMethods:
             wait_time_seconds=6,
         )
         logger.info("Clicking the video button...")
-        self.click_element(video_button, "video_button")
+        self.click_element(video_button, "disable_incoming_video:video_button")
 
         # After clicking the video button, select "Audio only" option
         logger.info("Waiting for the Audio only option...")
@@ -341,7 +341,7 @@ class GoogleMeetUIMethods:
             wait_time_seconds=6,
         )
         logger.info("Clicking the close button")
-        self.click_element(close_button, "close_button")
+        self.click_element(close_button, "disable_incoming_video:close_button")
 
         logger.info("Incoming video disabled")
 
