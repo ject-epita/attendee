@@ -171,6 +171,11 @@ class BotController:
     def get_zoom_web_bot_adapter(self):
         from bots.zoom_web_bot_adapter import ZoomWebBotAdapter
 
+        if self.should_capture_audio_chunks():
+            add_audio_chunk_callback = self.per_participant_audio_input_manager().add_chunk
+        else:
+            add_audio_chunk_callback = None
+
         zoom_oauth_credentials = self.get_zoom_oauth_credentials()
 
         zoom_tokens = {}
@@ -180,7 +185,7 @@ class BotController:
         return ZoomWebBotAdapter(
             display_name=self.bot_in_db.name,
             send_message_callback=self.on_message_from_adapter,
-            add_audio_chunk_callback=None,
+            add_audio_chunk_callback=add_audio_chunk_callback,
             meeting_url=self.bot_in_db.meeting_url,
             voice_agent_url=self.bot_in_db.voice_agent_url(),
             webpage_streamer_service_hostname=self.bot_in_db.k8s_webpage_streamer_service_hostname(),
@@ -267,6 +272,8 @@ class BotController:
     def get_per_participant_audio_utterance_delay_ms(self):
         meeting_type = self.get_meeting_type()
         if meeting_type == MeetingTypes.TEAMS:
+            return 2000
+        if meeting_type == MeetingTypes.ZOOM and self.bot_in_db.use_zoom_web_adapter():
             return 2000
         return 0
 

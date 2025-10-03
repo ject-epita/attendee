@@ -23,7 +23,7 @@ class TranscriptMessageFinalizationManager {
 
     sendMessage(message) {
         const messageConverted = {
-            deviceId: message.userId,
+            deviceId: message.userId.toString(),
             captionId: message.msgId,
             text: message.text ? message.text.replace(/\x00/g, '') : '',
             isFinal: !!message.done
@@ -142,7 +142,17 @@ function startMeeting(signature) {
     })
 
     ZoomMtg.inMeetingServiceListener('onActiveSpeaker', function (data) {
-        console.log('onActiveSpeaker', data);
+        /*
+        [
+            {
+                "userId": 16778240,
+                "userName": "Noah Duncan"
+            }
+        ]
+        */
+        for (const activeSpeaker of data) {
+            window.dominantSpeakerManager.addCaptionAudioTime(Date.now(), activeSpeaker.userId);
+        }
         // Use active speaker events to determine if we are silent or not
         window.ws.sendJson({
             type: 'SilenceStatus',
@@ -194,6 +204,9 @@ function startMeeting(signature) {
             return;
         }
 
+        if (!window.initialData.collectCaptions)
+            return;
+
         transcriptMessageFinalizationManager.addMessage(item);
     });
 
@@ -204,7 +217,7 @@ function startMeeting(signature) {
             window.ws.sendJson({
                 type: 'ChatMessage',
                 message_uuid: chatMessage.content.messageId,
-                participant_uuid: chatMessage.senderId,
+                participant_uuid: chatMessage.senderId.toString(),
                 timestamp: Math.floor(parseInt(chatMessage.content.t) / 1000),
                 text: chatMessage.content.text,
             });
