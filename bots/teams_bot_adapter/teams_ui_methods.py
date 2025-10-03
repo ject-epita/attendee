@@ -274,10 +274,29 @@ class TeamsUIMethods:
         logger.info("Clicking the view button...")
         self.click_element(view_button, "disable_incoming_video:view_button")
 
+        # Try to click the turn off incoming video button
+        # If we can't find it, then look for the more options button and click it to reveal the turn off incoming video button
+        num_attempts = 10
         logger.info("Waiting for the turn off incoming video button...")
-        turn_off_incoming_video_button = self.locate_element(step="turn_off_incoming_video_button", condition=EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Turn off incoming video']")), wait_time_seconds=10)
-        logger.info("Clicking the turn off incoming video button...")
-        self.click_element(turn_off_incoming_video_button, "disable_incoming_video:turn_off_incoming_video_button")
+        for attempt_index in range(num_attempts):
+            try:
+                turn_off_incoming_video_button = WebDriverWait(self.driver, 1).until(EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Turn off incoming video'], #incoming-video-button")))
+                logger.info("Turn off incoming video button found")
+                turn_off_incoming_video_button.click()
+                return
+            except TimeoutException as e:
+                more_options_button = self.find_element_by_selector(By.CSS_SELECTOR, '#ViewModeMoreOptionsMenuControl-id')
+                if more_options_button:
+                    logger.info("Clicking the more options button...")
+                    self.click_element(more_options_button, "disable_incoming_video:more_options_button")
+
+                last_check_timed_out = attempt_index == num_attempts - 1
+                if last_check_timed_out:
+                    logger.info("Could not find turn off incoming video button. Timed out. Raising UiCouldNotLocateElementException")
+                    raise UiCouldNotLocateElementException("Could not find turn off incoming video button. Timed out.", "disable_incoming_video:turn_off_incoming_video_button", e)
+            except Exception as e:
+                logger.info(f"Could not click turn off incoming video button. Unknown error {e} of type {type(e)}. Raising UiCouldNotLocateElementException")
+                raise UiCouldNotLocateElementException("Could not click turn off incoming video button. Unknown error.", "disable_incoming_video:turn_off_incoming_video_button", e)
 
     def click_leave_button(self):
         logger.info("Waiting for the leave button")
