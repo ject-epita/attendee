@@ -285,7 +285,7 @@ class TeamsUIMethods:
                 turn_off_incoming_video_button.click()
                 return
             except TimeoutException as e:
-                more_options_button = self.find_element_by_selector(By.CSS_SELECTOR, '#ViewModeMoreOptionsMenuControl-id')
+                more_options_button = self.find_element_by_selector(By.CSS_SELECTOR, "#ViewModeMoreOptionsMenuControl-id")
                 if more_options_button:
                     logger.info("Clicking the more options button...")
                     self.click_element(more_options_button, "disable_incoming_video:more_options_button")
