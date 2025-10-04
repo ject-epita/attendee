@@ -355,6 +355,39 @@ function sendChatMessage(text) {
     });
 }
 
+function closeRequestPermissionModal() {
+    try {
+        // Find modal with class zm-modal or zm-modal-legacy
+        const modals = document.querySelectorAll('div.zm-modal, div.zm-modal-legacy');
+        
+        for (const modal of modals) {
+            // Check if this modal has a descendant with class zm-modal-body-title
+            const titleDiv = modal.querySelector('div.zm-modal-body-title');
+            
+            if (titleDiv && titleDiv.innerText.includes('Permission needed from Meeting Host')) {
+                // Found the correct modal, now look for close button within it
+                const buttons = modal.querySelectorAll('button');
+                
+                for (const button of buttons) {
+                    if (button.innerText.toLowerCase() === 'close') {
+                        console.log('Clicking close button on permission modal');
+                        button.click();
+                        return;
+                    }
+                }
+                
+                console.log('Found permission modal but could not find close button');
+                return;
+            }
+        }
+        
+        console.log('Permission modal not found');
+    }
+    catch (error) {
+        console.log('closeRequestPermissionModal error', error);
+    }
+}
+
 window.sendChatMessage = sendChatMessage;
 
 function askForMediaCapturePermission() {
@@ -376,6 +409,11 @@ function askForMediaCapturePermission() {
             }, error: (error) => {
                 console.log('mediaCapturePermission error', error);
             }});
+
+            // Also try to close the you need to ask for permission modal
+            setTimeout(() => {
+                closeRequestPermissionModal();
+            }, 500);
         }});
     }, 1000);
 }
