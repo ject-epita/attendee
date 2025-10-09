@@ -95,6 +95,31 @@ def get_calendar_event_for_user(user, calendar_event_object_id):
     return calendar_event
 
 
+def get_partial_for_credential_type(credential_type, request, context):
+    if credential_type == Credentials.CredentialTypes.ZOOM_OAUTH:
+        return render(request, "projects/partials/zoom_credentials.html", context)
+    elif credential_type == Credentials.CredentialTypes.DEEPGRAM:
+        return render(request, "projects/partials/deepgram_credentials.html", context)
+    elif credential_type == Credentials.CredentialTypes.GLADIA:
+        return render(request, "projects/partials/gladia_credentials.html", context)
+    elif credential_type == Credentials.CredentialTypes.OPENAI:
+        return render(request, "projects/partials/openai_credentials.html", context)
+    elif credential_type == Credentials.CredentialTypes.GOOGLE_TTS:
+        return render(request, "projects/partials/google_tts_credentials.html", context)
+    elif credential_type == Credentials.CredentialTypes.ASSEMBLY_AI:
+        return render(request, "projects/partials/assembly_ai_credentials.html", context)
+    elif credential_type == Credentials.CredentialTypes.SARVAM:
+        return render(request, "projects/partials/sarvam_credentials.html", context)
+    elif credential_type == Credentials.CredentialTypes.ELEVENLABS:
+        return render(request, "projects/partials/elevenlabs_credentials.html", context)
+    elif credential_type == Credentials.CredentialTypes.TEAMS_BOT_LOGIN:
+        return render(request, "projects/partials/teams_bot_login_credentials.html", context)
+    elif credential_type == Credentials.CredentialTypes.EXTERNAL_MEDIA_STORAGE:
+        return render(request, "projects/partials/external_media_storage_credentials.html", context)
+    else:
+        return HttpResponse("Cannot render the partial for this credential type", status=400)
+
+
 class AdminRequiredMixin(LoginRequiredMixin):
     """
     Mixin for class-based views that can only be accessed by admin users.
@@ -274,28 +299,9 @@ class CreateCredentialsView(LoginRequiredMixin, ProjectUrlContextMixin, View):
             context = self.get_project_context(object_id, project)
             context["credentials"] = credential.get_credentials()
             context["credential_type"] = credential.credential_type
-            if credential.credential_type == Credentials.CredentialTypes.ZOOM_OAUTH:
-                return render(request, "projects/partials/zoom_credentials.html", context)
-            elif credential.credential_type == Credentials.CredentialTypes.DEEPGRAM:
-                return render(request, "projects/partials/deepgram_credentials.html", context)
-            elif credential.credential_type == Credentials.CredentialTypes.GLADIA:
-                return render(request, "projects/partials/gladia_credentials.html", context)
-            elif credential.credential_type == Credentials.CredentialTypes.OPENAI:
-                return render(request, "projects/partials/openai_credentials.html", context)
-            elif credential.credential_type == Credentials.CredentialTypes.ASSEMBLY_AI:
-                return render(request, "projects/partials/assembly_ai_credentials.html", context)
-            elif credential.credential_type == Credentials.CredentialTypes.SARVAM:
-                return render(request, "projects/partials/sarvam_credentials.html", context)
-            elif credential.credential_type == Credentials.CredentialTypes.ELEVENLABS:
-                return render(request, "projects/partials/elevenlabs_credentials.html", context)
-            elif credential.credential_type == Credentials.CredentialTypes.GOOGLE_TTS:
-                return render(request, "projects/partials/google_tts_credentials.html", context)
-            elif credential.credential_type == Credentials.CredentialTypes.TEAMS_BOT_LOGIN:
-                return render(request, "projects/partials/teams_bot_login_credentials.html", context)
-            elif credential.credential_type == Credentials.CredentialTypes.EXTERNAL_MEDIA_STORAGE:
-                return render(request, "projects/partials/external_media_storage_credentials.html", context)
-            else:
-                return HttpResponse("Cannot render the partial for this credential type", status=400)
+
+            # Render the appropriate partial based on credential type
+            return get_partial_for_credential_type(credential.credential_type, request, context)
 
         except Exception as e:
             return HttpResponse(str(e), status=400)
@@ -322,28 +328,7 @@ class DeleteCredentialsView(LoginRequiredMixin, ProjectUrlContextMixin, View):
             context["credential_type"] = credential_type
 
             # Render the appropriate partial based on credential type
-            if credential_type == Credentials.CredentialTypes.ZOOM_OAUTH:
-                return render(request, "projects/partials/zoom_credentials.html", context)
-            elif credential_type == Credentials.CredentialTypes.DEEPGRAM:
-                return render(request, "projects/partials/deepgram_credentials.html", context)
-            elif credential_type == Credentials.CredentialTypes.GLADIA:
-                return render(request, "projects/partials/gladia_credentials.html", context)
-            elif credential_type == Credentials.CredentialTypes.OPENAI:
-                return render(request, "projects/partials/openai_credentials.html", context)
-            elif credential_type == Credentials.CredentialTypes.GOOGLE_TTS:
-                return render(request, "projects/partials/google_tts_credentials.html", context)
-            elif credential_type == Credentials.CredentialTypes.ASSEMBLY_AI:
-                return render(request, "projects/partials/assembly_ai_credentials.html", context)
-            elif credential_type == Credentials.CredentialTypes.SARVAM:
-                return render(request, "projects/partials/sarvam_credentials.html", context)
-            elif credential_type == Credentials.CredentialTypes.ELEVENLABS:
-                return render(request, "projects/partials/elevenlabs_credentials.html", context)
-            elif credential_type == Credentials.CredentialTypes.TEAMS_BOT_LOGIN:
-                return render(request, "projects/partials/teams_bot_login_credentials.html", context)
-            elif credential_type == Credentials.CredentialTypes.EXTERNAL_MEDIA_STORAGE:
-                return render(request, "projects/partials/external_media_storage_credentials.html", context)
-            else:
-                return HttpResponse("Cannot render the partial for this credential type", status=400)
+            return get_partial_for_credential_type(credential_type, request, context)
 
         except Exception as e:
             return HttpResponse(str(e), status=400)
