@@ -5,6 +5,8 @@ import uuid
 from enum import Enum
 
 import redis
+from concurrency.exceptions import RecordModifiedError
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.urls import reverse
@@ -24,6 +26,8 @@ from .models import (
     MeetingTypes,
     Project,
     Recording,
+    TranscriptionProviders,
+    TranscriptionSettings,
     TranscriptionTypes,
     WebhookSecret,
     WebhookSubscription,
@@ -32,6 +36,7 @@ from .models import (
 from .serializers import (
     CreateBotSerializer,
     PatchBotSerializer,
+    PatchBotTranscriptionSettingsSerializer,
 )
 from .utils import transcription_provider_from_bot_creation_data
 
@@ -271,6 +276,37 @@ def create_bot(data: dict, source: BotCreationSource, project: Project) -> tuple
         return None, {"error": f"An error occurred while creating the bot. Error ID: {error_id}"}
 
 
+def patch_bot_transcription_settings(bot: Bot, data: dict) -> tuple[Bot | None, dict | None]:
+    # Check if bot is in a state that allows updating transcription settings
+    if not BotEventManager.is_state_that_can_update_transcription_settings(bot.state):
+        return None, {"error": f"Bot is in state {BotStates.state_to_api_code(bot.state)} and cannot update transcription settings"}
+
+    default_recording = Recording.objects.get(bot=bot, is_default_recording=True)
+    if default_recording.transcription_provider != TranscriptionProviders.CLOSED_CAPTION_FROM_PLATFORM:
+        return None, {"error": "Bot is not transcribing with meeting closed captions"}
+
+    # Validate the request data
+    serializer = PatchBotTranscriptionSettingsSerializer(data=data)
+    if not serializer.is_valid():
+        return None, serializer.errors
+
+    validated_data = serializer.validated_data
+
+    # Update the bot in the DB. Handle concurrency conflict
+    # Only legal update is to update the teams closed captions language
+    try:
+        if "transcription_settings" not in bot.settings:
+            bot.settings["transcription_settings"] = {}
+        if "meeting_closed_captions" not in bot.settings["transcription_settings"]:
+            bot.settings["transcription_settings"]["meeting_closed_captions"] = {}
+        bot.settings["transcription_settings"]["meeting_closed_captions"]["teams_language"] = TranscriptionSettings(validated_data.get("transcription_settings")).teams_closed_captions_language()
+        bot.save()
+    except RecordModifiedError:
+        return None, {"error": "Version conflict. Please try again."}
+
+    return bot, None
+
+
 def patch_bot(bot: Bot, data: dict) -> tuple[Bot | None, dict | None]:
     """
     Updates a scheduled bot with the provided data.
@@ -359,7 +395,7 @@ def validate_webhook_data(url, triggers, project, bot=None):
             return f"Invalid webhook trigger type: {trigger}"
 
     # Check if URL is valid
-    if not url.startswith("https://"):
+    if not url.startswith("https://") and settings.REQUIRE_HTTPS_WEBHOOKS:
         return "webhook URL must start with https://"
 
     # Check for duplicate URLs
