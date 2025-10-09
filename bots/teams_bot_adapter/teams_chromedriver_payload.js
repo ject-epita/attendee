@@ -2704,6 +2704,7 @@ navigator.mediaDevices.getUserMedia = function(constraints) {
 class CallManager {
     constructor() {
         this.activeCall = null;
+        this.closedCaptionLanguageInterval = null;
     }
 
     setActiveCall() {
@@ -2821,7 +2822,11 @@ class CallManager {
                     this.activeCall.setClosedCaptionsLanguage(language);
                     // Set an interval that runs every 60 seconds and makes sure the current closed caption language is equal to the language
                     // This is for debugging purposes
-                    setInterval(() => {
+                    if (this.closedCaptionLanguageInterval) {
+                        clearInterval(this.closedCaptionLanguageInterval);
+                        this.closedCaptionLanguageInterval = null;
+                    }
+                    this.closedCaptionLanguageInterval = setInterval(() => {
                         if (this.activeCall && this.activeCall.getClosedCaptionsLanguage) {
                             if (this.activeCall.getClosedCaptionsLanguage() !== language) {
                                 window.ws?.sendJson({
