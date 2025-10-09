@@ -884,12 +884,12 @@ class BotController:
         if meeting_type != MeetingTypes.TEAMS:
             logger.info(f"Bot {self.bot_in_db.object_id} is not a teams bot, so cannot update closed captions language")
             return
-        
+
         # If it not using closed caption from platform, do nothing
         if self.get_recording_transcription_provider() != TranscriptionProviders.CLOSED_CAPTION_FROM_PLATFORM:
             logger.info(f"Bot {self.bot_in_db.object_id} is not using closed caption from platform, so cannot update closed captions language")
             return
-        
+
         # If it is a teams bot using closed caption from platform, we need to update the transcription settings
         self.adapter.update_closed_captions_language(self.bot_in_db.transcription_settings.teams_closed_captions_language())
 
