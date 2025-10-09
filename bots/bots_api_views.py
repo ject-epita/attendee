@@ -18,7 +18,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .authentication import ApiKeyAuthentication
-from .bots_api_utils import BotCreationSource, create_bot, create_bot_chat_message_request, create_bot_media_request_for_image, delete_bot, patch_bot, send_sync_command, update_bot_transcription_settings
+from .bots_api_utils import BotCreationSource, create_bot, create_bot_chat_message_request, create_bot_media_request_for_image, delete_bot, patch_bot, send_sync_command, patch_bot_transcription_settings
 from .launch_bot_utils import launch_bot
 from .meeting_url_utils import meeting_type_from_url
 from .models import (
@@ -1106,7 +1106,7 @@ class SendChatMessageView(APIView):
             )
 
 
-class UpdateTranscriptionSettingsView(APIView):
+class TranscriptionSettingsView(APIView):
     authentication_classes = [ApiKeyAuthentication]
 
     @extend_schema(exclude=True)
@@ -1114,18 +1114,18 @@ class UpdateTranscriptionSettingsView(APIView):
         try:
             bot = Bot.objects.get(object_id=object_id, project=request.auth.project)
 
-            bot_updated, error = update_bot_transcription_settings(bot, request.data)
+            bot_updated, error = patch_bot_transcription_settings(bot, request.data)
             if error:
                 return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
             try:
-                logging.info(f"Updating transcription settings for bot {bot.object_id}")
+                logging.info(f"Patching transcription settings for bot {bot.object_id}")
                 send_sync_command(bot, "sync_transcription_settings")
                 return Response(status=status.HTTP_200_OK)
             except Exception as e:
-                logging.error(f"Error updating transcription settings for bot {bot.object_id}: {str(e)}")
+                logging.error(f"Error patching transcription settings for bot {bot.object_id}: {str(e)}")
                 return Response(
-                    {"error": "Failed to update transcription settings"},
+                    {"error": "Failed to patch transcription settings"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 

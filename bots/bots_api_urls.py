@@ -76,8 +76,8 @@ urlpatterns = [
     ),
     path(
         "bots/<str:object_id>/transcription_settings",
-        bots_api_views.UpdateTranscriptionSettingsView.as_view(),
-        name="bot-update-transcription-settings",
+        bots_api_views.TranscriptionSettingsView.as_view(),
+        name="bot-transcription-settings",
     ),
     path(
         "bots/<str:object_id>/participant_events",

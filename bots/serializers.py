@@ -450,7 +450,7 @@ class TranscriptionSettingsJSONField(serializers.JSONField):
 
 
 # Define a subset schema for updating transcription settings (currently only Teams closed captions language)
-UPDATE_TRANSCRIPTION_SETTINGS_SCHEMA = {
+PATCH_BOT_TRANSCRIPTION_SETTINGS_SCHEMA = {
     "type": "object",
     "properties": {
         "meeting_closed_captions": {
@@ -467,8 +467,8 @@ UPDATE_TRANSCRIPTION_SETTINGS_SCHEMA = {
 }
 
 
-@extend_schema_field(UPDATE_TRANSCRIPTION_SETTINGS_SCHEMA)
-class UpdateTranscriptionSettingsJSONField(serializers.JSONField):
+@extend_schema_field(PATCH_BOT_TRANSCRIPTION_SETTINGS_SCHEMA)
+class PatchBotTranscriptionSettingsJSONField(serializers.JSONField):
     pass
 
 
@@ -1605,15 +1605,15 @@ class ParticipantEventSerializer(serializers.Serializer):
         return ParticipantEventTypes.type_to_api_code(obj.event_type)
 
 
-class UpdateTranscriptionSettingsSerializer(serializers.Serializer):
+class PatchBotTranscriptionSettingsSerializer(serializers.Serializer):
     """Serializer for updating transcription settings. Currently supports only updating Teams closed captions language."""
 
-    transcription_settings = UpdateTranscriptionSettingsJSONField(help_text="Transcription settings to update. Currently supports only updating Teams closed captions language, e.g. {'meeting_closed_captions': {'teams_language': 'en-us'}}", required=True)
+    transcription_settings = PatchBotTranscriptionSettingsJSONField(help_text="Transcription settings to update. Currently supports only updating Teams closed captions language, e.g. {'meeting_closed_captions': {'teams_language': 'en-us'}}", required=True)
 
     def validate_transcription_settings(self, value):
         """Validate the transcription settings against the schema."""
         try:
-            jsonschema.validate(instance=value, schema=UPDATE_TRANSCRIPTION_SETTINGS_SCHEMA)
+            jsonschema.validate(instance=value, schema=PATCH_BOT_TRANSCRIPTION_SETTINGS_SCHEMA)
         except jsonschema.exceptions.ValidationError as e:
             raise serializers.ValidationError(e.message)
 

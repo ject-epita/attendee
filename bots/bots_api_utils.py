@@ -36,7 +36,7 @@ from .models import (
 from .serializers import (
     CreateBotSerializer,
     PatchBotSerializer,
-    UpdateTranscriptionSettingsSerializer,
+    PatchBotTranscriptionSettingsSerializer,
 )
 from .utils import transcription_provider_from_bot_creation_data
 
@@ -276,7 +276,7 @@ def create_bot(data: dict, source: BotCreationSource, project: Project) -> tuple
         return None, {"error": f"An error occurred while creating the bot. Error ID: {error_id}"}
 
 
-def update_bot_transcription_settings(bot: Bot, data: dict) -> tuple[Bot | None, dict | None]:
+def patch_bot_transcription_settings(bot: Bot, data: dict) -> tuple[Bot | None, dict | None]:
     # Check if bot is in a state that allows updating transcription settings
     if not BotEventManager.is_state_that_can_update_transcription_settings(bot.state):
         return None, {"error": f"Bot is in state {BotStates.state_to_api_code(bot.state)} and cannot update transcription settings"}
@@ -286,7 +286,7 @@ def update_bot_transcription_settings(bot: Bot, data: dict) -> tuple[Bot | None,
         return None, {"error": "Bot is not transcribing with meeting closed captions"}
 
     # Validate the request data
-    serializer = UpdateTranscriptionSettingsSerializer(data=data)
+    serializer = PatchBotTranscriptionSettingsSerializer(data=data)
     if not serializer.is_valid():
         return None, serializer.errors
 
