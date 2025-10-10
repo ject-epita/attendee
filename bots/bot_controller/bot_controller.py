@@ -10,9 +10,9 @@ from datetime import timedelta
 
 import gi
 import redis
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.utils import timezone
-from django.conf import settings
 
 from bots.automatic_leave_configuration import AutomaticLeaveConfiguration
 from bots.bot_adapter import BotAdapter
@@ -53,10 +53,9 @@ from bots.webhook_utils import trigger_webhook
 from bots.websocket_payloads import mixed_audio_websocket_payload
 
 from .audio_output_manager import AudioOutputManager
+from .azure_file_uploader import AzureFileUploader
 from .bot_resource_snapshot_taker import BotResourceSnapshotTaker
 from .closed_caption_manager import ClosedCaptionManager
-from .s3_file_uploader import S3FileUploader
-from .azure_file_uploader import AzureFileUploader
 from .grouped_closed_caption_manager import GroupedClosedCaptionManager
 from .gstreamer_pipeline import GstreamerPipeline
 from .per_participant_non_streaming_audio_input_manager import PerParticipantNonStreamingAudioInputManager
@@ -64,6 +63,7 @@ from .per_participant_streaming_audio_input_manager import PerParticipantStreami
 from .pipeline_configuration import PipelineConfiguration
 from .realtime_audio_output_manager import RealtimeAudioOutputManager
 from .rtmp_client import RTMPClient
+from .s3_file_uploader import S3FileUploader
 from .screen_and_audio_recorder import ScreenAndAudioRecorder
 from .video_output_manager import VideoOutputManager
 
@@ -422,10 +422,10 @@ class BotController:
             )
 
         return S3FileUploader(
-                bucket=os.environ.get("AWS_RECORDING_STORAGE_BUCKET_NAME"),
-                filename=self.get_recording_filename(),
-                endpoint_url=os.environ.get("AWS_ENDPOINT_URL"),
-            )
+            bucket=os.environ.get("AWS_RECORDING_STORAGE_BUCKET_NAME"),
+            filename=self.get_recording_filename(),
+            endpoint_url=os.environ.get("AWS_ENDPOINT_URL"),
+        )
 
     def cleanup(self):
         if self.cleanup_called:

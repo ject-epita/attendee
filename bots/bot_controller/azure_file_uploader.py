@@ -1,9 +1,8 @@
 import logging
-import os
 import threading
 from pathlib import Path
 
-from azure.storage.blob import BlobServiceClient, BlobClient
+from azure.storage.blob import BlobClient, BlobServiceClient
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -54,9 +53,7 @@ class AzureFileUploader:
             file_path (str): Path to the local file to upload.
             callback (callable, optional): Function to call when upload completes; receives True/False.
         """
-        self._upload_thread = threading.Thread(
-            target=self._upload_worker, args=(file_path, callback), daemon=True
-        )
+        self._upload_thread = threading.Thread(target=self._upload_worker, args=(file_path, callback), daemon=True)
         self._upload_thread.start()
 
     def _upload_worker(self, file_path: str, callback=None):
@@ -72,9 +69,7 @@ class AzureFileUploader:
                 self.blob_client.upload_blob(f, overwrite=True)
 
             account_url = self.blob_client.url.split(f"/{self.container}/")[0]
-            logger.info(
-                f"Successfully uploaded {file_path} to {account_url}/{self.container}/{self.filename}"
-            )
+            logger.info(f"Successfully uploaded {file_path} to {account_url}/{self.container}/{self.filename}")
 
             if callback:
                 callback(True)

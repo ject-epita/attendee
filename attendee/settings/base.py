@@ -201,22 +201,23 @@ SPECTACULAR_SETTINGS = {
 STORAGE_PROTOCOL = os.getenv("STORAGE_PROTOCOL", "s3")
 if STORAGE_PROTOCOL == "azure":
     DEFAULT_STORAGE_BACKEND = {
-            "BACKEND": "storages.backends.azure_storage.AzureStorage",
-            "OPTIONS": {
-                "connection_string": os.getenv("AZURE_CONNECTION_STRING"),
-                "account_key": os.getenv("AZURE_ACCOUNT_KEY"),
-                "account_name": os.getenv("AZURE_ACCOUNT_NAME"),
-            },
-        }
+        "BACKEND": "storages.backends.azure_storage.AzureStorage",
+        "OPTIONS": {
+            "connection_string": os.getenv("AZURE_CONNECTION_STRING"),
+            "account_key": os.getenv("AZURE_ACCOUNT_KEY"),
+            "account_name": os.getenv("AZURE_ACCOUNT_NAME"),
+            "expiration_secs": 30 * 60,
+        },
+    }
 else:
     DEFAULT_STORAGE_BACKEND = {
-            "BACKEND": "storages.backends.s3.S3Storage",
-            "OPTIONS": {
-                "endpoint_url": os.getenv("AWS_ENDPOINT_URL"),
-                "access_key": os.getenv("AWS_ACCESS_KEY_ID"),
-                "secret_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
-            },
-        }
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "endpoint_url": os.getenv("AWS_ENDPOINT_URL"),
+            "access_key": os.getenv("AWS_ACCESS_KEY_ID"),
+            "secret_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+        },
+    }
 
 STORAGES = {
     "default": DEFAULT_STORAGE_BACKEND,
