@@ -69,7 +69,7 @@
                                 <small>Create bot</small>
                                 <pre class="bg-light p-1 m-1 rounded">
 <code class="small">curl -X POST \
-{% if SITE_DOMAIN == "localhost:8000" or SITE_DOMAIN == "localhost" %}http://{{ SITE_DOMAIN }}{% else %}https://{{ SITE_DOMAIN }}{% endif %}/api/v1/bots \
+{{ request.scheme }}://{{ request.get_host }}/api/v1/bots \
 -H 'Authorization: Token &lt;YOUR_API_KEY&gt;' \
 -H 'Content-Type: application/json' \
 -d '{"meeting_url": "https://us05web.zoom.us/j/xxxxxxx?pwd=xxxxxx", "bot_name": "My Bot"}'</code>
@@ -79,7 +79,7 @@
                                 <small>Retrieve transcript</small>
                                 <pre class="bg-light p-1 m-1 rounded">
 <code class="small">curl -X GET \
-{% if SITE_DOMAIN == "localhost:8000" or SITE_DOMAIN == "localhost" %}http://{{ SITE_DOMAIN }}{% else %}https://{{ SITE_DOMAIN }}{% endif %}/api/v1/bots/&lt;BOT_ID&gt/transcript \
+{{ request.scheme }}://{{ request.get_host }}/api/v1/bots/&lt;BOT_ID&gt/transcript \
 -H 'Authorization: Token &lt;YOUR_API_KEY&gt;' \
 -H 'Content-Type: application/json'</code>
                                 </pre>

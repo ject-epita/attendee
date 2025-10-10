@@ -151,7 +151,6 @@ class ProjectDashboardView(LoginRequiredMixin, ProjectUrlContextMixin, View):
                     "has_ended_bots": has_ended_bots,
                     "has_created_bots_via_api": has_created_bots_via_api,
                 },
-                "SITE_DOMAIN": settings.SITE_DOMAIN,
             }
         )
 

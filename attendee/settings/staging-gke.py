@@ -3,7 +3,6 @@ import dj_database_url
 from .base import *
 
 DEBUG = False
-SITE_DOMAIN = os.getenv("SITE_DOMAIN", "staging.attendee.dev")
 ALLOWED_HOSTS = ["*"]
 
 DATABASES = {
