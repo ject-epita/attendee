@@ -175,7 +175,7 @@ class ProjectDashboardView(LoginRequiredMixin, ProjectUrlContextMixin, View):
                     "has_api_keys": has_api_keys,
                     "has_ended_bots": has_ended_bots,
                     "has_created_bots_via_api": has_created_bots_via_api,
-                }
+                },
             }
         )
 
