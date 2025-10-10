@@ -1340,7 +1340,7 @@ class TestGoogleMeetBot2(TransactionTestCase):
         external_call_args = MockFileUploader.call_args_list[0]
         external_call_kwargs = external_call_args.kwargs
         self.assertEqual(external_call_kwargs["bucket"], "my-external-bucket")
-        self.assertEqual(external_call_kwargs["key"], "custom-recording-name.mp4")
+        self.assertEqual(external_call_kwargs["filename"], "custom-recording-name.mp4")
         self.assertEqual(external_call_kwargs["endpoint_url"], "https://s3.amazonaws.com")
         self.assertEqual(external_call_kwargs["region_name"], "us-east-1")
         self.assertEqual(external_call_kwargs["access_key_id"], "test_access_key")
@@ -1350,7 +1350,7 @@ class TestGoogleMeetBot2(TransactionTestCase):
         regular_call_args = MockFileUploader.call_args_list[1]
         regular_call_kwargs = regular_call_args.kwargs
         self.assertEqual(regular_call_kwargs["bucket"], "test-bucket")  # From environment variable set in setUpClass
-        self.assertIsNotNone(regular_call_kwargs["key"])  # Should have some recording filename
+        self.assertIsNotNone(regular_call_kwargs["filename"])  # Should have some recording filename
 
         # Verify only one delete_file call (for the regular storage uploader)
         mock_uploader.delete_file.assert_called_once()
