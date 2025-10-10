@@ -206,7 +206,7 @@ if STORAGE_PROTOCOL == "azure":
             "connection_string": os.getenv("AZURE_CONNECTION_STRING"),
             "account_key": os.getenv("AZURE_ACCOUNT_KEY"),
             "account_name": os.getenv("AZURE_ACCOUNT_NAME"),
-            "expiration_secs": os.getenv("AZURE_STORAGE_LINK_EXPIRATION_SECONDS", 1800),
+            "expiration_secs": None if os.getenv("AZURE_STORAGE_USE_PERMANENT_LINKS", "false") == "true" else int(os.getenv("AZURE_STORAGE_LINK_EXPIRATION_SECONDS", 1800)),
         },
     }
 else:
