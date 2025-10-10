@@ -331,7 +331,9 @@ class DeleteCredentialsView(LoginRequiredMixin, ProjectUrlContextMixin, View):
             return get_partial_for_credential_type(credential_type, request, context)
 
         except Exception as e:
-            return HttpResponse(str(e), status=400)
+            error_id = str(uuid.uuid4())
+            logger.error(f"Error deleting credentials (error_id={error_id}): {e}")
+            return HttpResponse(f"Error deleting credentials. Error ID: {error_id}", status=400)
 
 
 class ProjectCredentialsView(LoginRequiredMixin, ProjectUrlContextMixin, View):
