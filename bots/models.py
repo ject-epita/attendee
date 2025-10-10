@@ -1526,10 +1526,14 @@ class TranscriptionProviders(models.IntegerChoices):
 
 
 from storages.backends.s3boto3 import S3Boto3Storage
+from storages.backends.azure_storage import AzureStorage
 
 
-class RecordingStorage(S3Boto3Storage):
-    bucket_name = settings.AWS_RECORDING_STORAGE_BUCKET_NAME
+class RecordingStorage(S3Boto3Storage if settings.STORAGE_PROTOCOL == "s3" else AzureStorage):
+    if settings.STORAGE_PROTOCOL == "s3":
+        bucket_name = settings.AWS_RECORDING_STORAGE_BUCKET_NAME
+    else:
+        azure_container = settings.AZURE_RECORDING_STORAGE_CONTAINER_NAME
 
 
 class Recording(models.Model):
@@ -2228,8 +2232,11 @@ class BotChatMessageRequestManager:
         chat_message_request.save()
 
 
-class BotDebugScreenshotStorage(S3Boto3Storage):
-    bucket_name = settings.AWS_RECORDING_STORAGE_BUCKET_NAME
+class BotDebugScreenshotStorage(S3Boto3Storage if settings.STORAGE_PROTOCOL == "s3" else AzureStorage):
+    if settings.STORAGE_PROTOCOL == "s3":
+        bucket_name = settings.AWS_RECORDING_STORAGE_BUCKET_NAME
+    else:
+        azure_container = settings.AZURE_RECORDING_STORAGE_CONTAINER_NAME
 
 
 class BotDebugScreenshot(models.Model):
