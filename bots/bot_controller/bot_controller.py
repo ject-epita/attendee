@@ -414,17 +414,17 @@ class BotController:
     def get_file_uploader(self):
         if settings.STORAGE_PROTOCOL == "azure":
             return AzureFileUploader(
-                container=os.environ.get("AZURE_RECORDING_STORAGE_CONTAINER_NAME"),
+                container=settings.AZURE_RECORDING_STORAGE_CONTAINER_NAME,
                 filename=self.get_recording_filename(),
-                connection_string=os.environ.get("AZURE_CONNECTION_STRING"),
-                account_key=os.environ.get("AZURE_ACCOUNT_KEY"),
-                account_name=os.environ.get("AZURE_ACCOUNT_NAME"),
+                connection_string=settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("connection_string"),
+                account_key=settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("account_key"),
+                account_name=settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("account_name"),
             )
 
         return S3FileUploader(
-            bucket=os.environ.get("AWS_RECORDING_STORAGE_BUCKET_NAME"),
+            bucket=settings.AWS_RECORDING_STORAGE_BUCKET_NAME,
             filename=self.get_recording_filename(),
-            endpoint_url=os.environ.get("AWS_ENDPOINT_URL"),
+            endpoint_url=settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("endpoint_url"),
         )
 
     def cleanup(self):

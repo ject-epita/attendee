@@ -33,11 +33,11 @@ class AzureFileUploader:
         # Prefer connection string if provided; otherwise fall back to account_name + account_key
         if connection_string:
             service_client = BlobServiceClient.from_connection_string(connection_string)
-        else:
-            if not (account_name and account_key):
-                raise ValueError("Provide either AZURE_CONNECTION_STRING or both AZURE_ACCOUNT_NAME and AZURE_ACCOUNT_KEY")
+        elif account_name and account_key:
             account_url = f"https://{account_name}.blob.core.windows.net"
             service_client = BlobServiceClient(account_url=account_url, credential=account_key)
+        else:
+            raise ValueError("Provide either connection string or both account_name and account_key")
 
         # Keep a BlobClient ready to use (mirrors S3 "bucket/key" pairing)
         self.container = container

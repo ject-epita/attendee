@@ -11,6 +11,7 @@ from concurrency.fields import IntegerVersionField
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.files.storage import Storage, storages
 from django.db import models, transaction
 from django.db.models import Q
 from django.db.utils import IntegrityError
@@ -1525,19 +1526,14 @@ class TranscriptionProviders(models.IntegerChoices):
     ELEVENLABS = 7, "ElevenLabs"
 
 
-from storages.backends.azure_storage import AzureStorage
-from storages.backends.s3boto3 import S3Boto3Storage
+class RecordingStorage(Storage):
+    """
+    Returns the configured 'recordings' storage from Django's registry.
+    """
 
-
-class RecordingStorage(AzureStorage if settings.STORAGE_PROTOCOL == "azure" else S3Boto3Storage):
-    if settings.STORAGE_PROTOCOL == "azure":
-        azure_container = settings.AZURE_RECORDING_STORAGE_CONTAINER_NAME
-        account_name = settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("account_name")
-        account_key = settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("account_key")
-        connection_string = settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("connection_string")
-        expiration_secs = settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("expiration_secs")
-    else:
-        bucket_name = settings.AWS_RECORDING_STORAGE_BUCKET_NAME
+    def __new__(cls, *args, **kwargs):
+        # return the actual storage instance
+        return storages["recordings"]
 
 
 class Recording(models.Model):
@@ -2240,15 +2236,14 @@ class BotChatMessageRequestManager:
         chat_message_request.save()
 
 
-class BotDebugScreenshotStorage(AzureStorage if settings.STORAGE_PROTOCOL == "azure" else S3Boto3Storage):
-    if settings.STORAGE_PROTOCOL == "azure":
-        azure_container = settings.AZURE_RECORDING_STORAGE_CONTAINER_NAME
-        account_name = settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("account_name")
-        account_key = settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("account_key")
-        connection_string = settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("connection_string")
-        expiration_secs = settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("expiration_secs")
-    else:
-        bucket_name = settings.AWS_RECORDING_STORAGE_BUCKET_NAME
+class BotDebugScreenshotStorage(Storage):
+    """
+    Returns the configured 'recordings' storage from Django's registry.
+    """
+
+    def __new__(cls, *args, **kwargs):
+        # return the actual storage instance
+        return storages["bot_debug_screenshots"]
 
 
 class BotDebugScreenshot(models.Model):

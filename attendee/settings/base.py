@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import copy
 import os
 from pathlib import Path
 
@@ -199,6 +200,9 @@ SPECTACULAR_SETTINGS = {
 # Set up django storage backend
 # Use s3 by default, but if the STORAGE_PROTOCOL env var is set to "azure", use azure storage
 STORAGE_PROTOCOL = os.getenv("STORAGE_PROTOCOL", "s3")
+AWS_RECORDING_STORAGE_BUCKET_NAME = os.getenv("AWS_RECORDING_STORAGE_BUCKET_NAME")
+AZURE_RECORDING_STORAGE_CONTAINER_NAME = os.getenv("AZURE_RECORDING_STORAGE_CONTAINER_NAME")
+
 if STORAGE_PROTOCOL == "azure":
     DEFAULT_STORAGE_BACKEND = {
         "BACKEND": "storages.backends.azure_storage.AzureStorage",
@@ -209,6 +213,8 @@ if STORAGE_PROTOCOL == "azure":
             "expiration_secs": None if os.getenv("AZURE_STORAGE_USE_PERMANENT_LINKS", "false") == "true" else int(os.getenv("AZURE_STORAGE_LINK_EXPIRATION_SECONDS", 1800)),
         },
     }
+    RECORDING_STORAGE_BACKEND = copy.deepcopy(DEFAULT_STORAGE_BACKEND)
+    RECORDING_STORAGE_BACKEND["OPTIONS"]["azure_container"] = AZURE_RECORDING_STORAGE_CONTAINER_NAME
 else:
     DEFAULT_STORAGE_BACKEND = {
         "BACKEND": "storages.backends.s3.S3Storage",
@@ -218,9 +224,15 @@ else:
             "secret_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
         },
     }
+    # Deep copy the DEFAULT_STORAGE_BACKEND
+    RECORDING_STORAGE_BACKEND = copy.deepcopy(DEFAULT_STORAGE_BACKEND)
+    RECORDING_STORAGE_BACKEND["OPTIONS"]["bucket_name"] = AWS_RECORDING_STORAGE_BUCKET_NAME
+
 
 STORAGES = {
     "default": DEFAULT_STORAGE_BACKEND,
+    "recordings": RECORDING_STORAGE_BACKEND,
+    "bot_debug_screenshots": RECORDING_STORAGE_BACKEND,
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
@@ -228,9 +240,6 @@ STORAGES = {
 AWS_S3_SIGNATURE_VERSION = "s3v4"
 if os.getenv("USE_IRSA_FOR_S3_STORAGE", "false") == "true":
     AWS_S3_ADDRESSING_STYLE = "virtual"
-AWS_RECORDING_STORAGE_BUCKET_NAME = os.getenv("AWS_RECORDING_STORAGE_BUCKET_NAME")
-
-AZURE_RECORDING_STORAGE_CONTAINER_NAME = os.getenv("AZURE_RECORDING_STORAGE_CONTAINER_NAME")
 
 CHARGE_CREDITS_FOR_BOTS = os.getenv("CHARGE_CREDITS_FOR_BOTS", "false") == "true"
 
