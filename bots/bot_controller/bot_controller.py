@@ -416,15 +416,15 @@ class BotController:
             return AzureFileUploader(
                 container=settings.AZURE_RECORDING_STORAGE_CONTAINER_NAME,
                 filename=self.get_recording_filename(),
-                connection_string=settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("connection_string"),
-                account_key=settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("account_key"),
-                account_name=settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("account_name"),
+                connection_string=settings.RECORDING_STORAGE_BACKEND.get("OPTIONS").get("connection_string"),
+                account_key=settings.RECORDING_STORAGE_BACKEND.get("OPTIONS").get("account_key"),
+                account_name=settings.RECORDING_STORAGE_BACKEND.get("OPTIONS").get("account_name"),
             )
 
         return S3FileUploader(
             bucket=settings.AWS_RECORDING_STORAGE_BUCKET_NAME,
             filename=self.get_recording_filename(),
-            endpoint_url=settings.DEFAULT_STORAGE_BACKEND.get("OPTIONS").get("endpoint_url"),
+            endpoint_url=settings.RECORDING_STORAGE_BACKEND.get("OPTIONS").get("endpoint_url"),
         )
 
     def cleanup(self):
