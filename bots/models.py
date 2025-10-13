@@ -11,6 +11,7 @@ from concurrency.fields import IntegerVersionField
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.files.storage import Storage, storages
 from django.db import models, transaction
 from django.db.models import Q
 from django.db.utils import IntegrityError
@@ -1525,11 +1526,14 @@ class TranscriptionProviders(models.IntegerChoices):
     ELEVENLABS = 7, "ElevenLabs"
 
 
-from storages.backends.s3boto3 import S3Boto3Storage
+class RecordingStorage(Storage):
+    """
+    Returns the configured 'recordings' storage from Django's registry.
+    """
 
-
-class RecordingStorage(S3Boto3Storage):
-    bucket_name = settings.AWS_RECORDING_STORAGE_BUCKET_NAME
+    def __new__(cls, *args, **kwargs):
+        # return the actual storage instance
+        return storages["recordings"]
 
 
 class Recording(models.Model):
@@ -1569,6 +1573,10 @@ class Recording(models.Model):
     def url(self):
         if not self.file.name:
             return None
+
+        if settings.STORAGE_PROTOCOL == "azure":
+            return self.file.url
+
         # Generate a temporary signed URL that expires in 30 minutes (1800 seconds)
         return self.file.storage.bucket.meta.client.generate_presigned_url(
             "get_object",
@@ -2228,8 +2236,14 @@ class BotChatMessageRequestManager:
         chat_message_request.save()
 
 
-class BotDebugScreenshotStorage(S3Boto3Storage):
-    bucket_name = settings.AWS_RECORDING_STORAGE_BUCKET_NAME
+class BotDebugScreenshotStorage(Storage):
+    """
+    Returns the configured 'recordings' storage from Django's registry.
+    """
+
+    def __new__(cls, *args, **kwargs):
+        # return the actual storage instance
+        return storages["bot_debug_screenshots"]
 
 
 class BotDebugScreenshot(models.Model):
@@ -2254,6 +2268,10 @@ class BotDebugScreenshot(models.Model):
     def url(self):
         if not self.file.name:
             return None
+
+        if settings.STORAGE_PROTOCOL == "azure":
+            return self.file.url
+
         # Generate a temporary signed URL that expires in 30 minutes (1800 seconds)
         return self.file.storage.bucket.meta.client.generate_presigned_url(
             "get_object",
