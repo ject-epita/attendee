@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, call, patch
 
 import kubernetes
 from django.db import connection
-from django.test.testcases import TransactionTestCase
+from django.test.testcases import TransactionTestCase, override_settings
 from django.utils import timezone
 
 from bots.bot_adapter import BotAdapter
@@ -38,6 +38,43 @@ from bots.tests.mock_data import create_mock_file_uploader, create_mock_google_m
 from bots.web_bot_adapter.ui_methods import UiRetryableException
 
 
+@override_settings(
+    STORAGE_PROTOCOL="azure",
+    AZURE_RECORDING_STORAGE_CONTAINER_NAME="test-container",
+    CHARGE_CREDITS_FOR_BOTS=False,
+    STORAGES={  # build the exact structure your code expects
+        "default": {
+            "BACKEND": "storages.backends.azure_storage.AzureStorage",
+            "OPTIONS": {
+                "connection_string": "fake",
+                "account_key": "fake",
+                "account_name": "fake",
+                "expiration_secs": None,
+            },
+        },
+        "recordings": {
+            "BACKEND": "storages.backends.azure_storage.AzureStorage",
+            "OPTIONS": {
+                "connection_string": "fake",
+                "account_key": "fake",
+                "account_name": "fake",
+                "azure_container": "test-container",
+                "expiration_secs": None,
+            },
+        },
+        "bot_debug_screenshots": {
+            "BACKEND": "storages.backends.azure_storage.AzureStorage",
+            "OPTIONS": {
+                "connection_string": "fake",
+                "account_key": "fake",
+                "account_name": "fake",
+                "azure_container": "test-container",
+                "expiration_secs": None,
+            },
+        },
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    },
+)
 class TestGoogleMeetBot2(TransactionTestCase):
     @classmethod
     def setUpClass(cls):
