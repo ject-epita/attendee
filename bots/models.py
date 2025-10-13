@@ -58,6 +58,136 @@ class Project(models.Model):
     def __str__(self):
         return self.name
 
+class ZoomOAuthApp(models.Model):
+    OBJECT_ID_PREFIX = "zoa_"
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="zoom_oauth_apps")
+
+    _encrypted_data = models.BinaryField(
+        null=True,
+        editable=False,  # Prevents editing through admin/forms
+    )
+    client_id = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_webhook_validation_at = models.DateTimeField(null=True, blank=True)
+
+    def set_credentials(self, credentials_dict):
+        """Encrypt and save credentials"""
+        f = Fernet(settings.CREDENTIALS_ENCRYPTION_KEY)
+        json_data = json.dumps(credentials_dict)
+        self._encrypted_data = f.encrypt(json_data.encode())
+        self.save()
+
+    def get_credentials(self):
+        """Decrypt and return credentials"""
+        if not self._encrypted_data:
+            return None
+        f = Fernet(settings.CREDENTIALS_ENCRYPTION_KEY)
+        decrypted_data = f.decrypt(bytes(self._encrypted_data))
+        return json.loads(decrypted_data.decode())
+
+    def save(self, *args, **kwargs):
+        if not self.object_id:
+            # Generate a random 16-character string
+            random_string = "".join(random.choices(string.ascii_letters + string.digits, k=16))
+            self.object_id = f"{self.OBJECT_ID_PREFIX}{random_string}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.project.name} - {self.get_client_id_display()}"
+
+class ZoomOAuthConnectionStates(models.IntegerChoices):
+    CONNECTED = 1
+    DISCONNECTED = 2
+
+class ZoomOAuthConnection(models.Model):
+    OBJECT_ID_PREFIX = "zoc_"
+
+    object_id = models.CharField(max_length=32, unique=True, editable=False)
+    zoom_oauth_app = models.ForeignKey(ZoomOAuthApp, on_delete=models.CASCADE, related_name="zoom_oauth_connections")
+    state = models.IntegerField(choices=ZoomOAuthConnectionStates.choices, default=ZoomOAuthConnectionStates.CONNECTED)
+    connection_failure_data = models.JSONField(null=True, default=None)
+    user_id = models.CharField(max_length=255)
+    account_id = models.CharField(max_length=255)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    version = IntegerVersionField()
+
+    metadata = models.JSONField(null=True, blank=True)
+
+    last_attempted_sync_at = models.DateTimeField(null=True, blank=True)
+    last_successful_sync_at = models.DateTimeField(null=True, blank=True)
+    last_successful_sync_started_at = models.DateTimeField(null=True, blank=True)
+    sync_task_enqueued_at = models.DateTimeField(null=True, blank=True)
+    sync_task_requested_at = models.DateTimeField(null=True, blank=True)
+
+    _encrypted_data = models.BinaryField(
+        null=True,
+        editable=False,  # Prevents editing through admin/forms
+    )
+
+    def set_credentials(self, credentials_dict):
+        """Encrypt and save credentials"""
+        f = Fernet(settings.CREDENTIALS_ENCRYPTION_KEY)
+        json_data = json.dumps(credentials_dict)
+        self._encrypted_data = f.encrypt(json_data.encode())
+        self.save()
+
+    def get_credentials(self):
+        """Decrypt and return credentials"""
+        if not self._encrypted_data:
+            return None
+        f = Fernet(settings.CREDENTIALS_ENCRYPTION_KEY)
+        decrypted_data = f.decrypt(bytes(self._encrypted_data))
+        return json.loads(decrypted_data.decode())
+
+    def save(self, *args, **kwargs):
+        if not self.object_id:
+            # Generate a random 16-character string
+            random_string = "".join(random.choices(string.ascii_letters + string.digits, k=16))
+            self.object_id = f"{self.OBJECT_ID_PREFIX}{random_string}"
+        super().save(*args, **kwargs)
+
+    class Meta:
+        # Within a zoom oauth app, we don't want to allow zoom oauth connections with the same user_id
+        constraints = [
+            models.UniqueConstraint(fields=["zoom_oauth_app", "user_id"], name="unique_zoom_oauth_connection_user_id"),
+        ]
+
+class ZoomMeetingToZoomOAuthConnectionMapping(models.Model):
+    OBJECT_ID_PREFIX = "zm_"
+
+    object_id = models.CharField(max_length=32, unique=True, editable=False)
+    zoom_oauth_connection = models.ForeignKey(ZoomOAuthConnection, on_delete=models.PROTECT, related_name="zoom_meetings")
+    zoom_oauth_app = models.ForeignKey(ZoomOAuthApp, on_delete=models.CASCADE, related_name="zoom_meetings")
+    meeting_id = models.CharField(max_length=25)
+    account_id = models.CharField(max_length=64)
+    raw = models.JSONField()
+
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if not self.object_id:
+            # Generate a random 16-character string
+            random_string = "".join(random.choices(string.ascii_letters + string.digits, k=16))
+            self.object_id = f"{self.OBJECT_ID_PREFIX}{random_string}"
+        super().save(*args, **kwargs)
+
+    class Meta:
+        # Within a Zoom App, within a zoom account, we don't want to allow zoom meetings with the same meeting_id
+        constraints = [
+            models.UniqueConstraint(fields=["zoom_oauth_app", "account_id", "meeting_id"], name="unique_zoom_meeting_id_account_id_zoom_oauth_app_id"),
+        ]
+
+        # Add indexes on meeting_id and zoom_oauth_connection_id
+        indexes = [
+            models.Index(fields=["meeting_id"], name="zoom_meeting_meeting_id_idx"),
+            models.Index(fields=["zoom_oauth_connection_id"], name="zm_zac_id_idx"),
+        ]
 
 class CalendarPlatform(models.TextChoices):
     GOOGLE = "google"
@@ -2320,6 +2450,7 @@ class WebhookTriggerTypes(models.IntegerChoices):
     CALENDAR_EVENTS_UPDATE = 5, "Calendar Events Update"
     CALENDAR_STATE_CHANGE = 6, "Calendar State Change"
     ASYNC_TRANSCRIPTION_STATE_CHANGE = 7, "Async Transcription State Change"
+    ZOOM_OAUTH_CONNECTION_STATE_CHANGE = 8, "Zoom OAuth Connection State Change"
     # add other event types here
 
     @classmethod
@@ -2333,6 +2464,7 @@ class WebhookTriggerTypes(models.IntegerChoices):
             cls.CALENDAR_EVENTS_UPDATE: "calendar.events_update",
             cls.CALENDAR_STATE_CHANGE: "calendar.state_change",
             cls.ASYNC_TRANSCRIPTION_STATE_CHANGE: "async_transcription.state_change",
+            cls.ZOOM_OAUTH_CONNECTION_STATE_CHANGE: "zoom_oauth_connection.state_change",
         }
 
     @classmethod
