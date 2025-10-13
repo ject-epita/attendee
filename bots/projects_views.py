@@ -222,6 +222,7 @@ class RedirectToDashboardView(LoginRequiredMixin, View):
     def get(self, request, object_id, extra=None):
         return redirect("bots:project-dashboard", object_id=object_id)
 
+
 class CreateZoomOAuthAppView(LoginRequiredMixin, ProjectUrlContextMixin, View):
     def post(self, request, object_id):
         project = get_project_for_user(user=request.user, project_object_id=object_id)
@@ -232,6 +233,7 @@ class CreateZoomOAuthAppView(LoginRequiredMixin, ProjectUrlContextMixin, View):
         context = self.get_project_context(object_id, project)
         context["zoom_oauth_app"] = zoom_oauth_app
         return render(request, "projects/partials/zoom_oauth_app.html", context)
+
 
 class CreateCredentialsView(LoginRequiredMixin, ProjectUrlContextMixin, View):
     def post(self, request, object_id):

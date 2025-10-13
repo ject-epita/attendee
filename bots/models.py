@@ -58,6 +58,7 @@ class Project(models.Model):
     def __str__(self):
         return self.name
 
+
 class ZoomOAuthApp(models.Model):
     OBJECT_ID_PREFIX = "zoa_"
 
@@ -72,6 +73,10 @@ class ZoomOAuthApp(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_webhook_validation_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def client_secret(self):
+        return self.get_credentials().get("client_secret")
 
     def set_credentials(self, credentials_dict):
         """Encrypt and save credentials"""
@@ -96,11 +101,13 @@ class ZoomOAuthApp(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.project.name} - {self.client_id}"
+        return f"{self.project.name} - {self.object_id} - {self.client_id}"
+
 
 class ZoomOAuthConnectionStates(models.IntegerChoices):
     CONNECTED = 1
     DISCONNECTED = 2
+
 
 class ZoomOAuthConnection(models.Model):
     OBJECT_ID_PREFIX = "zoc_"
@@ -111,7 +118,7 @@ class ZoomOAuthConnection(models.Model):
     connection_failure_data = models.JSONField(null=True, default=None)
     user_id = models.CharField(max_length=255)
     account_id = models.CharField(max_length=255)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     version = IntegerVersionField()
@@ -157,6 +164,7 @@ class ZoomOAuthConnection(models.Model):
             models.UniqueConstraint(fields=["zoom_oauth_app", "user_id"], name="unique_zoom_oauth_connection_user_id"),
         ]
 
+
 class ZoomMeetingToZoomOAuthConnectionMapping(models.Model):
     OBJECT_ID_PREFIX = "zm_"
 
@@ -187,6 +195,7 @@ class ZoomMeetingToZoomOAuthConnectionMapping(models.Model):
             models.Index(fields=["meeting_id"], name="zoom_meeting_meeting_id_idx"),
             models.Index(fields=["zoom_oauth_connection_id"], name="zm_zac_id_idx"),
         ]
+
 
 class CalendarPlatform(models.TextChoices):
     GOOGLE = "google"
