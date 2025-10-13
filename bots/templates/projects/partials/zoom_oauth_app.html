@@ -1,0 +1,88 @@
+<div class="card mt-4" id="zoom-oauth-app-container">
+    <div class="card-header">
+        <h5 class="mb-0">Zoom OAuth App</h5>
+    </div>
+    <div class="card-body">
+        <div id="credentials-status">
+            {% if zoom_oauth_app %}
+                <p>Client ID: {{ zoom_oauth_app.client_id }}</p>
+                <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#zoomOAuthAppModal">
+                    Edit OAuth App
+                </button>
+            {% else %}
+                <p>Add OAuth App needed to launch Zoom Bots.</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#zoomOAuthAppModal">
+                    Add OAuth App
+                </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="zoomOAuthAppModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% if zoom_oauth_app %}Edit{% else %}Add{% endif %} Zoom OAuth App</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="zoomOAuthAppForm"
+                    hx-post="{% url 'projects:create-zoom-oauth-app' project.object_id %}"
+                    hx-target="#zoom-oauth-app-container"
+                    hx-select="#zoom-oauth-app-container"
+                    hx-swap="outerHTML"
+                    hx-on::after-request="clearzoomOAuthAppForm()"
+                >
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="client_id" class="form-label">Client ID</label>
+                        <input type="text" 
+                            class="form-control" 
+                            id="client_id" 
+                            name="client_id" 
+                            required
+                            value="{{ zoom_oauth_app.client_id|default:'' }}"
+                            placeholder="Enter your Zoom OAuth Client ID">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="client_secret" class="form-label">Client Secret</label>
+                        <input type="text" 
+                            class="form-control" 
+                            id="client_secret" 
+                            name="client_secret" 
+                            required
+                            style="-webkit-text-security: disc; text-security: disc;"
+                            placeholder="Enter your Zoom OAuth Client Secret">
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">Save OAuth App</button>
+                        <button type="button" 
+                                class="btn btn-secondary ms-2"
+                                data-bs-dismiss="modal">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function clearzoomOAuthAppForm() {
+        const form = document.getElementById('zoomOAuthAppForm');
+        if (form) {
+            form.reset();
+        }
+        bootstrap.Modal.getInstance(document.getElementById('zoomOAuthAppModal'))?.hide();
+    }
+
+    // Clear form when modal is hidden (handles Cancel button and close button)
+    document.getElementById('zoomOAuthAppModal').addEventListener('hidden.bs.modal', function () {
+        clearzoomOAuthAppForm();
+    });
+</script>

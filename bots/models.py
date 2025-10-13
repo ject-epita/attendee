@@ -62,6 +62,7 @@ class ZoomOAuthApp(models.Model):
     OBJECT_ID_PREFIX = "zoa_"
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="zoom_oauth_apps")
+    object_id = models.CharField(max_length=32, unique=True, editable=False)
 
     _encrypted_data = models.BinaryField(
         null=True,
@@ -95,7 +96,7 @@ class ZoomOAuthApp(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.project.name} - {self.get_client_id_display()}"
+        return f"{self.project.name} - {self.client_id}"
 
 class ZoomOAuthConnectionStates(models.IntegerChoices):
     CONNECTED = 1
@@ -164,8 +165,6 @@ class ZoomMeetingToZoomOAuthConnectionMapping(models.Model):
     zoom_oauth_app = models.ForeignKey(ZoomOAuthApp, on_delete=models.CASCADE, related_name="zoom_meetings")
     meeting_id = models.CharField(max_length=25)
     account_id = models.CharField(max_length=64)
-    raw = models.JSONField()
-
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

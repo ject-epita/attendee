@@ -48,6 +48,7 @@ from .models import (
     WebhookSecret,
     WebhookSubscription,
     WebhookTriggerTypes,
+    ZoomOAuthApp,
 )
 from .stripe_utils import credit_amount_for_purchase_amount_dollars, process_checkout_session_completed
 from .utils import generate_recordings_json_for_bot_detail_view
@@ -221,6 +222,16 @@ class RedirectToDashboardView(LoginRequiredMixin, View):
     def get(self, request, object_id, extra=None):
         return redirect("bots:project-dashboard", object_id=object_id)
 
+class CreateZoomOAuthAppView(LoginRequiredMixin, ProjectUrlContextMixin, View):
+    def post(self, request, object_id):
+        project = get_project_for_user(user=request.user, project_object_id=object_id)
+        zoom_oauth_app, created = ZoomOAuthApp.objects.get_or_create(project=project)
+        zoom_oauth_app.client_id = request.POST.get("client_id")
+        zoom_oauth_app.save()
+        zoom_oauth_app.set_credentials({"client_secret": request.POST.get("client_secret")})
+        context = self.get_project_context(object_id, project)
+        context["zoom_oauth_app"] = zoom_oauth_app
+        return render(request, "projects/partials/zoom_oauth_app.html", context)
 
 class CreateCredentialsView(LoginRequiredMixin, ProjectUrlContextMixin, View):
     def post(self, request, object_id):
@@ -340,6 +351,9 @@ class ProjectCredentialsView(LoginRequiredMixin, ProjectUrlContextMixin, View):
     def get(self, request, object_id):
         project = get_project_for_user(user=request.user, project_object_id=object_id)
 
+        # Try to get existing zoom oauth app
+        zoom_oauth_app = ZoomOAuthApp.objects.filter(project=project).first()
+
         # Try to get existing credentials
         zoom_credentials = Credentials.objects.filter(project=project, credential_type=Credentials.CredentialTypes.ZOOM_OAUTH).first()
 
@@ -364,6 +378,7 @@ class ProjectCredentialsView(LoginRequiredMixin, ProjectUrlContextMixin, View):
         context = self.get_project_context(object_id, project)
         context.update(
             {
+                "zoom_oauth_app": zoom_oauth_app,
                 "zoom_credentials": zoom_credentials.get_credentials() if zoom_credentials else None,
                 "zoom_credential_type": Credentials.CredentialTypes.ZOOM_OAUTH,
                 "deepgram_credentials": deepgram_credentials.get_credentials() if deepgram_credentials else None,
