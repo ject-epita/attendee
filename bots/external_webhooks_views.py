@@ -67,11 +67,11 @@ class ExternalWebhookZoomOAuthAppView(View):
                     return HttpResponse(status=200)
 
                 if new_object.get("pmi") is None:
-                    logger.info(f"New PMI is None. So not doing anything.")
+                    logger.info("New PMI is None. So not doing anything.")
                     return HttpResponse(status=200)
 
                 if new_object.get("id") is None:
-                    logger.info(f"New user ID is None. So not doing anything.")
+                    logger.info("New user ID is None. So not doing anything.")
                     return HttpResponse(status=200)
 
                 zoom_oauth_connection = ZoomOAuthConnection.objects.filter(zoom_oauth_app=zoom_oauth_app, user_id=new_object.get("id")).first()
