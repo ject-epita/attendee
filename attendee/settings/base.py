@@ -57,7 +57,7 @@ AUTHENTICATION_BACKENDS = [
 
 # Django allauth config
 SITE_ID = 1
-if os.getenv("DISABLE_SIGNUP"):
+if os.getenv("DISABLE_SIGNUP") and os.getenv("DISABLE_SIGNUP") != "false":
     ACCOUNT_ADAPTER = "accounts.adapters.NoNewUsersAccountAdapter"
 else:
     ACCOUNT_ADAPTER = "accounts.adapters.StandardAccountAdapter"
