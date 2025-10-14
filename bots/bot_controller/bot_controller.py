@@ -183,11 +183,8 @@ class BotController:
 
         return {"client_id": zoom_oauth_app.client_id, "client_secret": zoom_oauth_app.client_secret}
 
-    def get_zoom_oauth_credentials(self):
-        return self.get_zoom_oauth_credentials_via_zoom_oauth_app() or self.get_zoom_oauth_credentials_via_credentials_record()
-
     def get_zoom_oauth_credentials_and_tokens(self):
-        zoom_oauth_credentials = self.get_zoom_oauth_credentials()
+        zoom_oauth_credentials = self.get_zoom_oauth_credentials_via_zoom_oauth_app() or self.get_zoom_oauth_credentials_via_credentials_record()
 
         zoom_tokens = {}
         if self.bot_in_db.zoom_tokens_callback_url():
