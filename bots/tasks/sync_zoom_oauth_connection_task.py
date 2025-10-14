@@ -94,10 +94,12 @@ def _make_zoom_api_request(url: str, access_token: str, params: dict) -> dict:
         logger.exception(f"Failed to make Zoom API request. Response body: {e.response.json()}")
         raise e
 
+
 def _get_zoom_personal_meeting_id(access_token: str) -> str:
     base_url = "https://api.zoom.us/v2/users/me"
     response_data = _make_zoom_api_request(base_url, access_token, {})
     return response_data.get("pmi")
+
 
 def _get_zoom_meetings(access_token: str) -> list[dict]:
     base_url = "https://api.zoom.us/v2/users/me/meetings"
@@ -136,7 +138,7 @@ def _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meeting_ids: list
         if not zoom_meeting_id:
             logger.warning(f"Zoom meeting id is None for zoom oauth connection {zoom_oauth_connection.id}")
             continue
-        
+
         zoom_meeting_to_zoom_oauth_connection_mapping, created = ZoomMeetingToZoomOAuthConnectionMapping.objects.update_or_create(
             zoom_oauth_app=zoom_oauth_app,
             meeting_id=zoom_meeting_id,

@@ -5,7 +5,7 @@ import uuid
 import requests
 from django.db import IntegrityError, transaction
 
-from .models import ZoomOAuthApp, ZoomOAuthConnection, ZoomOAuthConnectionStates
+from .models import ZoomOAuthApp, ZoomOAuthConnection
 from .serializers import CreateZoomOAuthConnectionSerializer
 
 logger = logging.getLogger(__name__)

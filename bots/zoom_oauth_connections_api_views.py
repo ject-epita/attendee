@@ -7,9 +7,9 @@ from rest_framework.response import Response
 
 from .authentication import ApiKeyAuthentication
 from .serializers import CreateZoomOAuthConnectionSerializer, ZoomOAuthConnectionSerializer
+from .tasks.sync_zoom_oauth_connection_task import enqueue_sync_zoom_oauth_connection_task
 from .throttling import ProjectPostThrottle
 from .zoom_oauth_connections_api_utils import create_zoom_oauth_connection
-from .tasks.sync_zoom_oauth_connection_task import enqueue_sync_zoom_oauth_connection_task
 
 TokenHeaderParameter = [
     OpenApiParameter(
