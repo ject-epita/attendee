@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import logging
 
 import requests
@@ -22,6 +24,13 @@ class ZoomAPIAuthenticationError(ZoomAPIError):
     """Custom exception for Zoom API errors."""
 
     pass
+
+
+def _verify_zoom_webhook_signature(body: str, timestamp: str, signature: str, secret: str):
+    """Verify the Zoom webhook signature."""
+    hmac_hash = hmac.new(secret.encode("utf-8"), f"v0:{timestamp}:{body}".encode("utf-8"), hashlib.sha256).hexdigest()
+    expected_signature = f"v0={hmac_hash}"
+    return expected_signature == signature
 
 
 def _raise_if_error_is_authentication_error(e: requests.RequestException):

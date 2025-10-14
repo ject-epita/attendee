@@ -78,6 +78,10 @@ class ZoomOAuthApp(models.Model):
     def client_secret(self):
         return self.get_credentials().get("client_secret")
 
+    @property
+    def webhook_secret(self):
+        return self.get_credentials().get("webhook_secret")
+
     def set_credentials(self, credentials_dict):
         """Encrypt and save credentials"""
         f = Fernet(settings.CREDENTIALS_ENCRYPTION_KEY)

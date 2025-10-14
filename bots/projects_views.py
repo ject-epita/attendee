@@ -229,7 +229,7 @@ class CreateZoomOAuthAppView(LoginRequiredMixin, ProjectUrlContextMixin, View):
         zoom_oauth_app, created = ZoomOAuthApp.objects.get_or_create(project=project)
         zoom_oauth_app.client_id = request.POST.get("client_id")
         zoom_oauth_app.save()
-        zoom_oauth_app.set_credentials({"client_secret": request.POST.get("client_secret")})
+        zoom_oauth_app.set_credentials({"client_secret": request.POST.get("client_secret"), "webhook_secret": request.POST.get("webhook_secret")})
         context = self.get_project_context(object_id, project)
         context["zoom_oauth_app"] = zoom_oauth_app
         return render(request, "projects/partials/zoom_oauth_app.html", context)
