@@ -145,6 +145,15 @@ def _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meetings: list[di
     logger.info(f"Upserted {num_updated} zoom meeting to zoom oauth connection mappings and created {num_created} new ones for zoom oauth connection {zoom_oauth_connection.id}")
 
 
+def enqueue_sync_zoom_oauth_connection_task(zoom_oauth_connection: ZoomOAuthConnection):
+    """Enqueue a sync zoom oauth connection task for a zoom oauth connection."""
+    with transaction.atomic():
+        zoom_oauth_connection.sync_task_enqueued_at = timezone.now()
+        zoom_oauth_connection.sync_task_requested_at = None
+        zoom_oauth_connection.save()
+        sync_zoom_oauth_connection.delay(zoom_oauth_connection.id)
+
+
 @shared_task(
     bind=True,
     autoretry_for=(Exception,),
@@ -152,7 +161,7 @@ def _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meetings: list[di
     max_retries=6,
 )
 def sync_zoom_oauth_connection(self, zoom_oauth_connection_id):
-    """Celery task to sync calendar events with a remote calendar."""
+    """Celery task to sync zoom meetings with a zoom oauth connection."""
     logger.info(f"Syncing zoom oauth connection {zoom_oauth_connection_id}")
     zoom_oauth_connection = ZoomOAuthConnection.objects.get(id=zoom_oauth_connection_id)
 
@@ -167,7 +176,7 @@ def sync_zoom_oauth_connection(self, zoom_oauth_connection_id):
 
         _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meetings, zoom_oauth_connection)
 
-        # Update calendar sync success timestamp and window
+        # Update zoom oauth connection sync success timestamp and window
         zoom_oauth_connection.last_attempted_sync_at = timezone.now()
         zoom_oauth_connection.last_successful_sync_at = zoom_oauth_connection.last_attempted_sync_at
         zoom_oauth_connection.last_successful_sync_started_at = sync_started_at
@@ -176,7 +185,7 @@ def sync_zoom_oauth_connection(self, zoom_oauth_connection_id):
         zoom_oauth_connection.save()
 
     except ZoomAPIAuthenticationError as e:
-        # Update calendar state to indicate failure
+        # Update zoom oauth connection state to indicate failure
         with transaction.atomic():
             zoom_oauth_connection.state = ZoomOAuthConnectionStates.DISCONNECTED
             zoom_oauth_connection.connection_failure_data = {
