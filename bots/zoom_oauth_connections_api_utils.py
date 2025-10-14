@@ -5,7 +5,7 @@ import uuid
 import requests
 from django.db import IntegrityError, transaction
 
-from .models import ZoomOAuthApp, ZoomOAuthConnection
+from .models import ZoomOAuthApp, ZoomOAuthConnection, ZoomOAuthConnectionStates
 from .serializers import CreateZoomOAuthConnectionSerializer
 
 logger = logging.getLogger(__name__)
@@ -93,16 +93,14 @@ def create_zoom_oauth_connection(data, project):
 
     try:
         with transaction.atomic():
-            zoom_oauth_connection = ZoomOAuthConnection(
-                zoom_oauth_app=zoom_oauth_app,
-                user_id=user_info["id"],
-                account_id=user_info["account_id"],
-                metadata=validated_data["metadata"],
-            )
+            zoom_oauth_connection, created = ZoomOAuthConnection.objects.get_or_create(zoom_oauth_app=zoom_oauth_app, user_id=user_info["id"])
 
             # Set encrypted credentials (refresh_token)
             credentials = {"refresh_token": zoom_oauth_tokens["refresh_token"]}
             zoom_oauth_connection.set_credentials(credentials)
+
+            zoom_oauth_connection.account_id = user_info["account_id"]
+            zoom_oauth_connection.metadata = validated_data["metadata"]
 
             # Save the zoom oauth connection
             zoom_oauth_connection.save()

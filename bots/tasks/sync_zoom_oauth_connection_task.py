@@ -92,6 +92,10 @@ def _make_zoom_api_request(url: str, access_token: str, params: dict) -> dict:
         logger.exception(f"Failed to make Zoom API request. Response body: {e.response.json()}")
         raise e
 
+def _get_zoom_personal_meeting_id(access_token: str) -> str:
+    base_url = "https://api.zoom.us/v2/users/me"
+    response_data = _make_zoom_api_request(base_url, access_token, {})
+    return response_data.get("pmi")
 
 def _get_zoom_meetings(access_token: str) -> list[dict]:
     base_url = "https://api.zoom.us/v2/users/me/meetings"
@@ -120,18 +124,20 @@ def _get_zoom_meetings(access_token: str) -> list[dict]:
     return all_meetings
 
 
-def _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meetings: list[dict], zoom_oauth_connection: ZoomOAuthConnection):
+def _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meeting_ids: list[int], zoom_oauth_connection: ZoomOAuthConnection):
     zoom_oauth_app = zoom_oauth_connection.zoom_oauth_app
-    account_id = zoom_oauth_connection.account_id
     num_updated = 0
     num_created = 0
 
     # Iterate over the zoom meetings and upsert the zoom meeting to zoom oauth connection mapping
-    for zoom_meeting in zoom_meetings:
+    for zoom_meeting_id in zoom_meeting_ids:
+        if not zoom_meeting_id:
+            logger.warning(f"Zoom meeting id is None for zoom oauth connection {zoom_oauth_connection.id}")
+            continue
+        
         zoom_meeting_to_zoom_oauth_connection_mapping, created = ZoomMeetingToZoomOAuthConnectionMapping.objects.update_or_create(
             zoom_oauth_app=zoom_oauth_app,
-            account_id=account_id,
-            meeting_id=zoom_meeting["id"],
+            meeting_id=zoom_meeting_id,
             defaults={"zoom_oauth_connection": zoom_oauth_connection},
         )
         # If one already exists, but it has a different zoom_oauth_connection_id, update it
@@ -142,7 +148,7 @@ def _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meetings: list[di
         if created:
             num_created += 1
 
-    logger.info(f"Upserted {num_updated} zoom meeting to zoom oauth connection mappings and created {num_created} new ones for zoom oauth connection {zoom_oauth_connection.id}")
+    logger.info(f"Upserted {num_updated} zoom meeting ids to zoom oauth connection mappings and created {num_created} new ones for zoom oauth connection {zoom_oauth_connection.id}")
 
 
 def enqueue_sync_zoom_oauth_connection_task(zoom_oauth_connection: ZoomOAuthConnection):
@@ -174,7 +180,10 @@ def sync_zoom_oauth_connection(self, zoom_oauth_connection_id):
 
         logger.info(f"Fetched {len(zoom_meetings)} meetings from Zoom for zoom oauth connection {zoom_oauth_connection_id}")
 
-        _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meetings, zoom_oauth_connection)
+        zoom_personal_meeting_id = _get_zoom_personal_meeting_id(access_token)
+        zoom_meeting_ids = [zoom_meeting["id"] for zoom_meeting in zoom_meetings] + [zoom_personal_meeting_id]
+
+        _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meeting_ids, zoom_oauth_connection)
 
         # Update zoom oauth connection sync success timestamp and window
         zoom_oauth_connection.last_attempted_sync_at = timezone.now()

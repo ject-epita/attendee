@@ -172,7 +172,6 @@ class ZoomMeetingToZoomOAuthConnectionMapping(models.Model):
     zoom_oauth_connection = models.ForeignKey(ZoomOAuthConnection, on_delete=models.PROTECT, related_name="zoom_meeting_to_zoom_oauth_connection_mappings")
     zoom_oauth_app = models.ForeignKey(ZoomOAuthApp, on_delete=models.CASCADE, related_name="zoom_meeting_to_zoom_oauth_connection_mappings")
     meeting_id = models.CharField(max_length=25)
-    account_id = models.CharField(max_length=64)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -185,9 +184,9 @@ class ZoomMeetingToZoomOAuthConnectionMapping(models.Model):
         super().save(*args, **kwargs)
 
     class Meta:
-        # Within a Zoom App, within a zoom account, we don't want to allow zoom meetings with the same meeting_id
+        # Within a Zoom App, we don't want to allow zoom meetings with the same meeting_id
         constraints = [
-            models.UniqueConstraint(fields=["zoom_oauth_app", "account_id", "meeting_id"], name="unique_zoom_meeting_id_account_id_zoom_oauth_app_id"),
+            models.UniqueConstraint(fields=["zoom_oauth_app", "meeting_id"], name="unique_zoom_meeting_id_zoom_oauth_app_id"),
         ]
 
         # Add indexes on meeting_id and zoom_oauth_connection_id

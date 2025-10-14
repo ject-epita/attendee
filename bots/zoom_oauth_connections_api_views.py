@@ -9,6 +9,7 @@ from .authentication import ApiKeyAuthentication
 from .serializers import CreateZoomOAuthConnectionSerializer, ZoomOAuthConnectionSerializer
 from .throttling import ProjectPostThrottle
 from .zoom_oauth_connections_api_utils import create_zoom_oauth_connection
+from .tasks.sync_zoom_oauth_connection_task import enqueue_sync_zoom_oauth_connection_task
 
 TokenHeaderParameter = [
     OpenApiParameter(
@@ -79,6 +80,6 @@ class ZoomOAuthConnectionListCreateView(GenericAPIView):
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
         # Immediately sync the zoom oauth connection
-        # enqueue_sync_zoom_oauth_connection_task(zoom_oauth_connection)
+        enqueue_sync_zoom_oauth_connection_task(zoom_oauth_connection)
 
         return Response(ZoomOAuthConnectionSerializer(zoom_oauth_connection).data, status=status.HTTP_201_CREATED)
