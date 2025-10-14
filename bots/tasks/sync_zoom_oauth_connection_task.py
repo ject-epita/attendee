@@ -1,8 +1,12 @@
 import logging
 
 import requests
+from django.db import transaction
+from django.utils import timezone
 
-from bots.models import ZoomOAuthConnection, ZoomMeetingToZoomOAuthConnectionMapping
+from bots.models import WebhookTriggerTypes, ZoomMeetingToZoomOAuthConnectionMapping, ZoomOAuthConnection, ZoomOAuthConnectionStates
+from bots.webhook_payloads import zoom_oauth_connection_webhook_payload
+from bots.webhook_utils import trigger_webhook
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +27,7 @@ class ZoomAPIAuthenticationError(ZoomAPIError):
 
 def _raise_if_error_is_authentication_error(self, e: requests.RequestException):
     error_code = e.response.json().get("error")
+    logger.info(f"Zoom API Error Code: {error_code}")
     return
 
 
@@ -71,6 +76,7 @@ def _get_access_token(zoom_oauth_connection) -> str:
         _raise_if_error_is_authentication_error(e)
         raise ZoomAPIError(f"Failed to refresh Zoom access token. Response body: {e.response.json()}")
 
+
 def _make_zoom_api_request(url: str, access_token: str, params: dict) -> dict:
     headers = {"Authorization": f"Bearer {access_token}"}
 
@@ -88,8 +94,7 @@ def _make_zoom_api_request(url: str, access_token: str, params: dict) -> dict:
 
 
 def _get_zoom_meetings(access_token: str) -> list[dict]:
-
-    base_url = f"https://api.zoom.us/v2/users/me/meetings"
+    base_url = "https://api.zoom.us/v2/users/me/meetings"
     base_params = {
         "page_size": 300,
     }
@@ -114,6 +119,7 @@ def _get_zoom_meetings(access_token: str) -> list[dict]:
 
     return all_meetings
 
+
 def _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meetings: list[dict], zoom_oauth_connection: ZoomOAuthConnection):
     zoom_oauth_app = zoom_oauth_connection.zoom_oauth_app
     account_id = zoom_oauth_connection.account_id
@@ -126,7 +132,7 @@ def _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meetings: list[di
             zoom_oauth_app=zoom_oauth_app,
             account_id=account_id,
             meeting_id=zoom_meeting["id"],
-            defaults={"zoom_oauth_connection": zoom_oauth_connection}
+            defaults={"zoom_oauth_connection": zoom_oauth_connection},
         )
         # If one already exists, but it has a different zoom_oauth_connection_id, update it
         if not created and zoom_meeting_to_zoom_oauth_connection_mapping.zoom_oauth_connection_id != zoom_oauth_connection.id:
@@ -137,6 +143,7 @@ def _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meetings: list[di
             num_created += 1
 
     logger.info(f"Upserted {num_updated} zoom meeting to zoom oauth connection mappings and created {num_created} new ones for zoom oauth connection {zoom_oauth_connection.id}")
+
 
 @shared_task(
     bind=True,
@@ -149,9 +156,46 @@ def sync_zoom_oauth_connection(self, zoom_oauth_connection_id):
     logger.info(f"Syncing zoom oauth connection {zoom_oauth_connection_id}")
     zoom_oauth_connection = ZoomOAuthConnection.objects.get(id=zoom_oauth_connection_id)
 
-    access_token = _get_access_token(zoom_oauth_connection)
-    zoom_meetings = _get_zoom_meetings(access_token)
+    try:
+        # Set the sync start time
+        sync_started_at = timezone.now()
 
-    logger.info(f"Fetched {len(zoom_meetings)} meetings from Zoom for zoom oauth connection {zoom_oauth_connection_id}")
+        access_token = _get_access_token(zoom_oauth_connection)
+        zoom_meetings = _get_zoom_meetings(access_token)
 
-    _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meetings, zoom_oauth_connection)
+        logger.info(f"Fetched {len(zoom_meetings)} meetings from Zoom for zoom oauth connection {zoom_oauth_connection_id}")
+
+        _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meetings, zoom_oauth_connection)
+
+        # Update calendar sync success timestamp and window
+        zoom_oauth_connection.last_attempted_sync_at = timezone.now()
+        zoom_oauth_connection.last_successful_sync_at = zoom_oauth_connection.last_attempted_sync_at
+        zoom_oauth_connection.last_successful_sync_started_at = sync_started_at
+        zoom_oauth_connection.state = ZoomOAuthConnectionStates.CONNECTED
+        zoom_oauth_connection.connection_failure_data = None
+        zoom_oauth_connection.save()
+
+    except ZoomAPIAuthenticationError as e:
+        # Update calendar state to indicate failure
+        with transaction.atomic():
+            zoom_oauth_connection.state = ZoomOAuthConnectionStates.DISCONNECTED
+            zoom_oauth_connection.connection_failure_data = {
+                "error": str(e),
+                "timestamp": timezone.now().isoformat(),
+            }
+            zoom_oauth_connection.save()
+
+        logger.exception(f"Zoom OAuth connection sync failed with ZoomAPIAuthenticationError for {zoom_oauth_connection_id}: {e}")
+
+        # Create webhook event
+        trigger_webhook(
+            webhook_trigger_type=WebhookTriggerTypes.ZOOM_OAUTH_CONNECTION_STATE_CHANGE,
+            zoom_oauth_connection=zoom_oauth_connection,
+            payload=zoom_oauth_connection_webhook_payload(zoom_oauth_connection),
+        )
+
+    except Exception as e:
+        logger.exception(f"Zoom OAuth connection sync failed with {type(e).__name__} for {zoom_oauth_connection_id}: {e}")
+        zoom_oauth_connection.last_attempted_sync_at = timezone.now()
+        zoom_oauth_connection.save()
+        raise

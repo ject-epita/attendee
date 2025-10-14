@@ -169,8 +169,8 @@ class ZoomMeetingToZoomOAuthConnectionMapping(models.Model):
     OBJECT_ID_PREFIX = "zm_"
 
     object_id = models.CharField(max_length=32, unique=True, editable=False)
-    zoom_oauth_connection = models.ForeignKey(ZoomOAuthConnection, on_delete=models.PROTECT, related_name="zoom_meetings")
-    zoom_oauth_app = models.ForeignKey(ZoomOAuthApp, on_delete=models.CASCADE, related_name="zoom_meetings")
+    zoom_oauth_connection = models.ForeignKey(ZoomOAuthConnection, on_delete=models.PROTECT, related_name="zoom_meeting_to_zoom_oauth_connection_mappings")
+    zoom_oauth_app = models.ForeignKey(ZoomOAuthApp, on_delete=models.CASCADE, related_name="zoom_meeting_to_zoom_oauth_connection_mappings")
     meeting_id = models.CharField(max_length=25)
     account_id = models.CharField(max_length=64)
 
@@ -2523,6 +2523,7 @@ class WebhookDeliveryAttempt(models.Model):
     idempotency_key = models.UUIDField(unique=True, editable=False)
     bot = models.ForeignKey(Bot, on_delete=models.SET_NULL, null=True, related_name="webhook_delivery_attempts")
     calendar = models.ForeignKey(Calendar, on_delete=models.SET_NULL, null=True, related_name="webhook_delivery_attempts")
+    zoom_oauth_connection = models.ForeignKey(ZoomOAuthConnection, on_delete=models.SET_NULL, null=True, related_name="webhook_delivery_attempts")
     payload = models.JSONField(default=dict)
     status = models.IntegerField(choices=WebhookDeliveryAttemptStatus.choices, default=WebhookDeliveryAttemptStatus.PENDING, null=False)
     attempt_count = models.IntegerField(default=0)
