@@ -25,9 +25,11 @@ class ZoomAPIAuthenticationError(ZoomAPIError):
     pass
 
 
-def _raise_if_error_is_authentication_error(self, e: requests.RequestException):
+def _raise_if_error_is_authentication_error(e: requests.RequestException):
     error_code = e.response.json().get("error")
-    logger.info(f"Zoom API Error Code: {error_code}")
+    if error_code == "invalid_grant" or error_code == "invalid_client":
+        raise ZoomAPIAuthenticationError(f"Zoom Authentication error: {e.response.json()}")
+
     return
 
 
