@@ -43,6 +43,7 @@ from bots.models import (
     TranscriptionFailureReasons,
     TranscriptionProviders,
     TranscriptionTypes,
+    ZoomOAuthApp,
 )
 from bots.utils import mp3_to_pcm, png_to_yuv420_frame, scale_i420
 
@@ -369,9 +370,10 @@ class TestZoomBot(TransactionTestCase):
         self.organization = Organization.objects.create(name="Test Org")
         self.project = Project.objects.create(name="Test Project", organization=self.organization)
 
+        # Recreate zoom oauth app
+        self.zoom_oauth_app = ZoomOAuthApp.objects.create(project=self.project, client_id="123")
+        self.zoom_oauth_app.set_credentials({"client_secret": "test_client_secret"})
         # Recreate credentials
-        self.credentials = Credentials.objects.create(project=self.project, credential_type=Credentials.CredentialTypes.ZOOM_OAUTH)
-        self.credentials.set_credentials({"client_id": "test_client_id", "client_secret": "test_client_secret"})
         self.deepgram_credentials = Credentials.objects.create(project=self.project, credential_type=Credentials.CredentialTypes.DEEPGRAM)
         self.deepgram_credentials.set_credentials({"api_key": "test_api_key"})
         self.google_credentials = Credentials.objects.create(project=self.project, credential_type=Credentials.CredentialTypes.GOOGLE_TTS)
