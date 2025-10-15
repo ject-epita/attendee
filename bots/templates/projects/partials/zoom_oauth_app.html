@@ -56,12 +56,22 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <div id="zoom-oauth-error" class="alert alert-danger d-none" role="alert"></div>
                     <form id="zoomOAuthAppForm"
                         hx-post="{% url 'projects:create-zoom-oauth-app' project.object_id %}"
                         hx-target="#zoom-oauth-app-partial"
                         hx-select="#zoom-oauth-app-partial"
                         hx-swap="outerHTML"
                         hx-on::before-request="bootstrap.Modal.getOrCreateInstance(document.getElementById('zoomOAuthAppModal')).hide()"
+                        hx-on::after-request="
+                        if (event.detail.xhr.status >= 400) {
+                            event.detail.shouldSwap = false;
+                            const m = document.getElementById('zoomOAuthAppModal');
+                            const box = m.querySelector('#zoom-oauth-error');
+                            box.textContent = event.detail.xhr.responseText || 'Something went wrong';
+                            box.classList.remove('d-none');
+                            bootstrap.Modal.getOrCreateInstance(m).show();
+                        }"
                     >
                         {% csrf_token %}
                         

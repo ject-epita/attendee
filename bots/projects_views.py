@@ -249,7 +249,7 @@ class CreateZoomOAuthAppView(LoginRequiredMixin, ProjectUrlContextMixin, View):
                 return HttpResponse("client_id and client_secret are required when creating a new Zoom OAuth app", status=400)
 
             if not client_id_and_secret_is_valid(client_id, client_secret):
-                return HttpResponse("Invalid client_id or client_secret", status=400)
+                return HttpResponse("Invalid client id or client secret", status=400)
 
             zoom_oauth_app = ZoomOAuthApp(project=project, client_id=client_id)
             zoom_oauth_app.set_credentials({"client_secret": client_secret, "webhook_secret": request.POST.get("webhook_secret", "")})
@@ -262,7 +262,7 @@ class CreateZoomOAuthAppView(LoginRequiredMixin, ProjectUrlContextMixin, View):
 
             # If they are updating the client secret, validate it
             if client_secret and not client_id_and_secret_is_valid(zoom_oauth_app.client_id, client_secret):
-                return HttpResponse("Invalid client_secret", status=400)
+                return HttpResponse("Invalid client secret", status=400)
 
             # Build updated credentials dict, preserving existing values if new ones are blank
             updated_credentials = {"client_secret": client_secret if client_secret else existing_credentials.get("client_secret", ""), "webhook_secret": webhook_secret if webhook_secret else existing_credentials.get("webhook_secret", "")}
