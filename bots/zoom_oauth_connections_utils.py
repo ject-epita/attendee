@@ -26,6 +26,26 @@ class ZoomAPIAuthenticationError(ZoomAPIError):
     pass
 
 
+def client_id_and_secret_is_valid(client_id: str, client_secret: str) -> bool:
+    """
+    Validate Zoom OAuth client credentials without requiring a user via client_credentials grant type
+
+    Returns:
+        True if the credentials are valid, False otherwise
+    """
+    try:
+        response = requests.post("https://zoom.us/oauth/token", auth=(client_id, client_secret), data={"grant_type": "client_credentials"}, timeout=30)
+
+        # If we get a 200  the credentials are valid
+        if response.status_code == 200:
+            return True
+
+        return False
+    except Exception as e:
+        logger.exception(f"Error validating Zoom OAuth client_id and client_secret: {e}")
+        return False
+
+
 def _verify_zoom_webhook_signature(body: str, timestamp: str, signature: str, secret: str):
     """Verify the Zoom webhook signature."""
     hmac_hash = hmac.new(secret.encode("utf-8"), f"v0:{timestamp}:{body}".encode("utf-8"), hashlib.sha256).hexdigest()

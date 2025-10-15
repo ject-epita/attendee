@@ -52,6 +52,7 @@ from .models import (
 )
 from .stripe_utils import credit_amount_for_purchase_amount_dollars, process_checkout_session_completed
 from .utils import generate_recordings_json_for_bot_detail_view
+from .zoom_oauth_connections_utils import client_id_and_secret_is_valid
 
 logger = logging.getLogger(__name__)
 
@@ -237,9 +238,9 @@ class DeleteZoomOAuthAppView(LoginRequiredMixin, ProjectUrlContextMixin, View):
 class CreateZoomOAuthAppView(LoginRequiredMixin, ProjectUrlContextMixin, View):
     def post(self, request, object_id):
         project = get_project_for_user(user=request.user, project_object_id=object_id)
-        zoom_oauth_app, created = ZoomOAuthApp.objects.get_or_create(project=project)
+        zoom_oauth_app = ZoomOAuthApp.objects.filter(project=project).first()
 
-        if created:
+        if not zoom_oauth_app:
             # Creating new app - client_id and client_secret are required
             client_id = request.POST.get("client_id")
             client_secret = request.POST.get("client_secret")
@@ -247,8 +248,10 @@ class CreateZoomOAuthAppView(LoginRequiredMixin, ProjectUrlContextMixin, View):
             if not client_id or not client_secret:
                 return HttpResponse("client_id and client_secret are required when creating a new Zoom OAuth app", status=400)
 
-            zoom_oauth_app.client_id = client_id
-            zoom_oauth_app.save()
+            if not client_id_and_secret_is_valid(client_id, client_secret):
+                return HttpResponse("Invalid client_id or client_secret", status=400)
+
+            zoom_oauth_app = ZoomOAuthApp(project=project, client_id=client_id)
             zoom_oauth_app.set_credentials({"client_secret": client_secret, "webhook_secret": request.POST.get("webhook_secret", "")})
         else:
             # Updating existing app - only update secrets if provided
@@ -256,6 +259,10 @@ class CreateZoomOAuthAppView(LoginRequiredMixin, ProjectUrlContextMixin, View):
 
             client_secret = request.POST.get("client_secret", "").strip()
             webhook_secret = request.POST.get("webhook_secret", "").strip()
+
+            # If they are updating the client secret, validate it
+            if client_secret and not client_id_and_secret_is_valid(zoom_oauth_app.client_id, client_secret):
+                return HttpResponse("Invalid client_secret", status=400)
 
             # Build updated credentials dict, preserving existing values if new ones are blank
             updated_credentials = {"client_secret": client_secret if client_secret else existing_credentials.get("client_secret", ""), "webhook_secret": webhook_secret if webhook_secret else existing_credentials.get("webhook_secret", "")}
