@@ -117,7 +117,7 @@ class ZoomOAuthConnection(models.Model):
     OBJECT_ID_PREFIX = "zoc_"
 
     object_id = models.CharField(max_length=32, unique=True, editable=False)
-    zoom_oauth_app = models.ForeignKey(ZoomOAuthApp, on_delete=models.CASCADE, related_name="zoom_oauth_connections")
+    zoom_oauth_app = models.ForeignKey(ZoomOAuthApp, on_delete=models.PROTECT, related_name="zoom_oauth_connections")
     state = models.IntegerField(choices=ZoomOAuthConnectionStates.choices, default=ZoomOAuthConnectionStates.CONNECTED)
     connection_failure_data = models.JSONField(null=True, default=None)
     user_id = models.CharField(max_length=255)
@@ -173,8 +173,8 @@ class ZoomMeetingToZoomOAuthConnectionMapping(models.Model):
     OBJECT_ID_PREFIX = "zm_"
 
     object_id = models.CharField(max_length=32, unique=True, editable=False)
-    zoom_oauth_connection = models.ForeignKey(ZoomOAuthConnection, on_delete=models.PROTECT, related_name="zoom_meeting_to_zoom_oauth_connection_mappings")
-    zoom_oauth_app = models.ForeignKey(ZoomOAuthApp, on_delete=models.CASCADE, related_name="zoom_meeting_to_zoom_oauth_connection_mappings")
+    zoom_oauth_connection = models.ForeignKey(ZoomOAuthConnection, on_delete=models.CASCADE, related_name="zoom_meeting_to_zoom_oauth_connection_mappings")
+    zoom_oauth_app = models.ForeignKey(ZoomOAuthApp, on_delete=models.PROTECT, related_name="zoom_meeting_to_zoom_oauth_connection_mappings")
     meeting_id = models.CharField(max_length=25)
 
     created_at = models.DateTimeField(auto_now_add=True)

@@ -1979,6 +1979,7 @@ class ZoomOAuthConnectionSerializer(serializers.ModelSerializer):
     id = serializers.CharField(source="object_id")
     state = serializers.SerializerMethodField()
     metadata = serializers.SerializerMethodField()
+    zoom_oauth_app_id = serializers.CharField(source="zoom_oauth_app.object_id")
 
     @extend_schema_field(
         {

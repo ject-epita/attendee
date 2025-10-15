@@ -10,6 +10,10 @@ from .serializers import CreateZoomOAuthConnectionSerializer, ZoomOAuthConnectio
 from .tasks.sync_zoom_oauth_connection_task import enqueue_sync_zoom_oauth_connection_task
 from .throttling import ProjectPostThrottle
 from .zoom_oauth_connections_api_utils import create_zoom_oauth_connection
+from .models import ZoomOAuthConnection
+import logging
+
+logger = logging.getLogger(__name__)
 
 TokenHeaderParameter = [
     OpenApiParameter(
@@ -58,6 +62,43 @@ class ZoomOAuthConnectionListCreateView(GenericAPIView):
     pagination_class = ZoomOAuthConnectionCursorPagination
     serializer_class = ZoomOAuthConnectionSerializer
 
+
+    @extend_schema(
+        operation_id="List Zoom OAuth Connections",
+        summary="List zoom oauth connections",
+        description="Returns a list of zoom oauth connections for the authenticated project. Results are paginated using cursor pagination.",
+        responses={
+            200: OpenApiResponse(
+                response=ZoomOAuthConnectionSerializer(many=True),
+                description="List of zoom oauth connections",
+            ),
+        },
+        parameters=[
+            *TokenHeaderParameter,
+            OpenApiParameter(
+                name="cursor",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Cursor for pagination",
+                required=False,
+            ),
+        ],
+        tags=["Zoom OAuth Connections"],
+    )
+    def get(self, request):
+        zoom_oauth_connections = ZoomOAuthConnection.objects.filter(zoom_oauth_app__project=request.auth.project)
+
+        zoom_oauth_connections = zoom_oauth_connections.order_by("-created_at")
+
+        # Let the pagination class handle the rest
+        page = self.paginate_queryset(zoom_oauth_connections)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(zoom_oauth_connections, many=True)
+        return Response(serializer.data)
+
     @extend_schema(
         operation_id="Create Zoom OAuth Connection",
         summary="Create a new zoom oauth connection",
@@ -83,3 +124,61 @@ class ZoomOAuthConnectionListCreateView(GenericAPIView):
         enqueue_sync_zoom_oauth_connection_task(zoom_oauth_connection)
 
         return Response(ZoomOAuthConnectionSerializer(zoom_oauth_connection).data, status=status.HTTP_201_CREATED)
+
+class ZoomOAuthConnectionDetailPatchDeleteView(GenericAPIView):
+    authentication_classes = [ApiKeyAuthentication]
+    throttle_classes = [ProjectPostThrottle]
+    serializer_class = ZoomOAuthConnectionSerializer
+
+    @extend_schema(
+        operation_id="Delete Zoom OAuth Connection",
+        summary="Delete a zoom oauth connection",
+        description="Deletes a zoom oauth connection.",
+        parameters=[
+            *TokenHeaderParameter,
+            OpenApiParameter(
+                name="object_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Zoom OAuth Connection ID",
+                examples=[OpenApiExample("Zoom OAuth Connection ID Example", value="zoc_abcdef1234567890")],
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(description="Zoom OAuth Connection deleted successfully"),
+            404: OpenApiResponse(description="Zoom OAuth Connection not found"),
+        },
+    )
+    def delete(self, request, object_id):
+        try:
+            zoom_oauth_connection = ZoomOAuthConnection.objects.get(object_id=object_id, zoom_oauth_app__project=request.auth.project)
+            zoom_oauth_connection.delete()
+            return Response(status=status.HTTP_200_OK)
+        except ZoomOAuthConnection.DoesNotExist:
+            return Response({"error": "Zoom OAuth Connection not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    @extend_schema(
+        operation_id="Get Zoom OAuth Connection",
+        summary="Get a zoom oauth connection",
+        description="Gets a zoom oauth connection.",
+        parameters=[
+            *TokenHeaderParameter,
+            OpenApiParameter(
+                name="object_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Zoom OAuth Connection ID",
+                examples=[OpenApiExample("Zoom OAuth Connection ID Example", value="zoc_abcdef1234567890")],
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(response=ZoomOAuthConnectionSerializer, description="Zoom OAuth Connection retrieved successfully"),
+            404: OpenApiResponse(description="Zoom OAuth Connection not found"),
+        },
+    )
+    def get(self, request, object_id):
+        try:
+            zoom_oauth_connection = ZoomOAuthConnection.objects.get(object_id=object_id, zoom_oauth_app__project=request.auth.project)
+            return Response(ZoomOAuthConnectionSerializer(zoom_oauth_connection).data, status=status.HTTP_200_OK)
+        except ZoomOAuthConnection.DoesNotExist:
+            return Response({"error": "Zoom OAuth Connection not found"}, status=status.HTTP_404_NOT_FOUND)
