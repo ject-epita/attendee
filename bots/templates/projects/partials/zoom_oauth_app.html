@@ -33,7 +33,12 @@
                             hx-swap="outerHTML"
                             hx-confirm="Are you sure you want to delete this Zoom OAuth App?">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-danger ms-2">
+                            <button 
+                            type="submit" class="btn btn-outline-danger ms-2"
+                            {% if zoom_oauth_app.zoom_oauth_connections.count > 0 %}
+                            disabled
+                            {% endif %}
+                            >
                                 Delete OAuth App
                             </button>
                         </form>
