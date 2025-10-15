@@ -71,6 +71,11 @@ urlpatterns = [
         name="create-zoom-oauth-app",
     ),
     path(
+        "<str:object_id>/settings/zoom-oauth-app/delete/",
+        projects_views.DeleteZoomOAuthAppView.as_view(),
+        name="delete-zoom-oauth-app",
+    ),
+    path(
         "<str:object_id>/settings/credentials/",
         projects_views.CreateCredentialsView.as_view(),
         name="create-credentials",

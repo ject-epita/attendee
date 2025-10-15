@@ -223,13 +223,44 @@ class RedirectToDashboardView(LoginRequiredMixin, View):
         return redirect("bots:project-dashboard", object_id=object_id)
 
 
+class DeleteZoomOAuthAppView(LoginRequiredMixin, ProjectUrlContextMixin, View):
+    def post(self, request, object_id):
+        project = get_project_for_user(user=request.user, project_object_id=object_id)
+        zoom_oauth_app = ZoomOAuthApp.objects.filter(project=project).first()
+        if not zoom_oauth_app:
+            return HttpResponse("Zoom OAuth app not found", status=404)
+        zoom_oauth_app.delete()
+        context = self.get_project_context(object_id, project)
+        return render(request, "projects/partials/zoom_oauth_app.html", context)
+
+
 class CreateZoomOAuthAppView(LoginRequiredMixin, ProjectUrlContextMixin, View):
     def post(self, request, object_id):
         project = get_project_for_user(user=request.user, project_object_id=object_id)
         zoom_oauth_app, created = ZoomOAuthApp.objects.get_or_create(project=project)
-        zoom_oauth_app.client_id = request.POST.get("client_id")
-        zoom_oauth_app.save()
-        zoom_oauth_app.set_credentials({"client_secret": request.POST.get("client_secret"), "webhook_secret": request.POST.get("webhook_secret")})
+
+        if created:
+            # Creating new app - client_id and client_secret are required
+            client_id = request.POST.get("client_id")
+            client_secret = request.POST.get("client_secret")
+
+            if not client_id or not client_secret:
+                return HttpResponse("client_id and client_secret are required when creating a new Zoom OAuth app", status=400)
+
+            zoom_oauth_app.client_id = client_id
+            zoom_oauth_app.save()
+            zoom_oauth_app.set_credentials({"client_secret": client_secret, "webhook_secret": request.POST.get("webhook_secret", "")})
+        else:
+            # Updating existing app - only update secrets if provided
+            existing_credentials = zoom_oauth_app.get_credentials() or {}
+
+            client_secret = request.POST.get("client_secret", "").strip()
+            webhook_secret = request.POST.get("webhook_secret", "").strip()
+
+            # Build updated credentials dict, preserving existing values if new ones are blank
+            updated_credentials = {"client_secret": client_secret if client_secret else existing_credentials.get("client_secret", ""), "webhook_secret": webhook_secret if webhook_secret else existing_credentials.get("webhook_secret", "")}
+            zoom_oauth_app.set_credentials(updated_credentials)
+
         context = self.get_project_context(object_id, project)
         context["zoom_oauth_app"] = zoom_oauth_app
         return render(request, "projects/partials/zoom_oauth_app.html", context)
