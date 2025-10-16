@@ -112,7 +112,7 @@ def validate_meeting_url_and_credentials(meeting_url, project):
     """
 
     if meeting_type_from_url(meeting_url) == MeetingTypes.ZOOM:
-        zoom_credentials = project.credentials.filter(credential_type=Credentials.CredentialTypes.ZOOM_OAUTH).first()
+        zoom_credentials = project.credentials.filter(credential_type=Credentials.CredentialTypes.ZOOM_OAUTH).first() or project.zoom_oauth_apps.first()
         if not zoom_credentials:
             relative_url = reverse("bots:project-credentials", kwargs={"object_id": project.object_id})
             settings_url = build_site_url(relative_url)

@@ -51,6 +51,7 @@ from bots.models import (
 from bots.webhook_payloads import chat_message_webhook_payload, participant_event_webhook_payload, utterance_webhook_payload
 from bots.webhook_utils import trigger_webhook
 from bots.websocket_payloads import mixed_audio_websocket_payload
+from bots.zoom_oauth_connections_utils import get_zoom_tokens_via_zoom_oauth_app
 
 from .audio_output_manager import AudioOutputManager
 from .azure_file_uploader import AzureFileUploader
@@ -164,7 +165,7 @@ class BotController:
             disable_incoming_video=self.disable_incoming_video_for_web_bots(),
         )
 
-    def get_zoom_oauth_credentials(self):
+    def get_zoom_oauth_credentials_via_credentials_record(self):
         zoom_oauth_credentials_record = self.bot_in_db.project.credentials.filter(credential_type=Credentials.CredentialTypes.ZOOM_OAUTH).first()
         if not zoom_oauth_credentials_record:
             raise Exception("Zoom OAuth credentials not found")
@@ -175,6 +176,24 @@ class BotController:
 
         return zoom_oauth_credentials
 
+    def get_zoom_oauth_credentials_via_zoom_oauth_app(self):
+        zoom_oauth_app = self.bot_in_db.project.zoom_oauth_apps.first()
+        if not zoom_oauth_app:
+            return
+
+        return {"client_id": zoom_oauth_app.client_id, "client_secret": zoom_oauth_app.client_secret}
+
+    def get_zoom_oauth_credentials_and_tokens(self):
+        zoom_oauth_credentials = self.get_zoom_oauth_credentials_via_zoom_oauth_app() or self.get_zoom_oauth_credentials_via_credentials_record()
+
+        zoom_tokens = {}
+        if self.bot_in_db.zoom_tokens_callback_url():
+            zoom_tokens = get_zoom_tokens(self.bot_in_db)
+        else:
+            zoom_tokens = get_zoom_tokens_via_zoom_oauth_app(self.bot_in_db)
+
+        return zoom_oauth_credentials, zoom_tokens
+
     def get_zoom_web_bot_adapter(self):
         from bots.zoom_web_bot_adapter import ZoomWebBotAdapter
 
@@ -183,11 +202,7 @@ class BotController:
         else:
             add_audio_chunk_callback = None
 
-        zoom_oauth_credentials = self.get_zoom_oauth_credentials()
-
-        zoom_tokens = {}
-        if self.bot_in_db.zoom_tokens_callback_url():
-            zoom_tokens = get_zoom_tokens(self.bot_in_db)
+        zoom_oauth_credentials, zoom_tokens = self.get_zoom_oauth_credentials_and_tokens()
 
         return ZoomWebBotAdapter(
             display_name=self.bot_in_db.name,
@@ -221,13 +236,9 @@ class BotController:
     def get_zoom_bot_adapter(self):
         from bots.zoom_bot_adapter import ZoomBotAdapter
 
-        zoom_oauth_credentials = self.get_zoom_oauth_credentials()
-
         add_audio_chunk_callback = self.per_participant_audio_input_manager().add_chunk
 
-        zoom_tokens = {}
-        if self.bot_in_db.zoom_tokens_callback_url():
-            zoom_tokens = get_zoom_tokens(self.bot_in_db)
+        zoom_oauth_credentials, zoom_tokens = self.get_zoom_oauth_credentials_and_tokens()
 
         return ZoomBotAdapter(
             use_one_way_audio=self.pipeline_configuration.transcribe_audio,
