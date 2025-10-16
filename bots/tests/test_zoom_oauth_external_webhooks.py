@@ -459,4 +459,3 @@ class TestZoomOAuthWebhooks(TestCase):
         # Verify there's only one mapping (not duplicated)
         mappings_count = ZoomMeetingToZoomOAuthConnectionMapping.objects.filter(meeting_id="123456789").count()
         self.assertEqual(mappings_count, 1)
-

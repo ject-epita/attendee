@@ -284,6 +284,7 @@ class TestZoomWebBot(TransactionTestCase):
 
         # Create bot controller
         controller = BotController(self.bot.id)
+        controller.adapter = MagicMock()
 
         # Run the bot in a separate thread since it has an event loop
         bot_thread = threading.Thread(target=controller.run)
@@ -291,7 +292,7 @@ class TestZoomWebBot(TransactionTestCase):
         bot_thread.start()
 
         # Give the bot some time to attempt token retrieval
-        time.sleep(10)
+        time.sleep(2)
 
         # Verify that the ZoomOAuthConnection state was updated to DISCONNECTED
         zoom_oauth_connection.refresh_from_db()
