@@ -72,7 +72,8 @@ class ZoomOAuthApp(models.Model):
     client_id = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    last_webhook_validation_at = models.DateTimeField(null=True, blank=True)
+    last_verified_webhook_received_at = models.DateTimeField(null=True, blank=True)
+    last_unverified_webhook_received_at = models.DateTimeField(null=True, blank=True)
 
     @property
     def client_secret(self):

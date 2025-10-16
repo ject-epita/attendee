@@ -64,6 +64,11 @@ class TestZoomOAuthWebhooks(TestCase):
         self.assertIsNotNone(mapping)
         self.assertEqual(mapping.zoom_oauth_app, self.zoom_oauth_app)
 
+        # Verify last_verified_webhook_received_at was updated
+        self.zoom_oauth_app.refresh_from_db()
+        self.assertIsNotNone(self.zoom_oauth_app.last_verified_webhook_received_at)
+        self.assertIsNone(self.zoom_oauth_app.last_unverified_webhook_received_at)
+
     def test_meeting_created_event_operator_differs_from_host(self):
         """Test meeting.created event when operator_id differs from host_id (should still work)."""
         event_data = {
@@ -147,6 +152,11 @@ class TestZoomOAuthWebhooks(TestCase):
         mapping = ZoomMeetingToZoomOAuthConnectionMapping.objects.filter(meeting_id="5551234567", zoom_oauth_connection=self.zoom_oauth_connection).first()
         self.assertIsNotNone(mapping)
         self.assertEqual(mapping.zoom_oauth_app, self.zoom_oauth_app)
+
+        # Verify last_verified_webhook_received_at was updated
+        self.zoom_oauth_app.refresh_from_db()
+        self.assertIsNotNone(self.zoom_oauth_app.last_verified_webhook_received_at)
+        self.assertIsNone(self.zoom_oauth_app.last_unverified_webhook_received_at)
 
     def test_user_updated_event_pmi_unchanged(self):
         """Test user.updated event when PMI has not changed (should do nothing)."""
@@ -287,6 +297,11 @@ class TestZoomOAuthWebhooks(TestCase):
         mapping = ZoomMeetingToZoomOAuthConnectionMapping.objects.filter(meeting_id="123456789").first()
         self.assertIsNone(mapping)
 
+        # Verify last_unverified_webhook_received_at was updated
+        self.zoom_oauth_app.refresh_from_db()
+        self.assertIsNotNone(self.zoom_oauth_app.last_unverified_webhook_received_at)
+        self.assertIsNone(self.zoom_oauth_app.last_verified_webhook_received_at)
+
     def test_nonexistent_zoom_oauth_app(self):
         """Test webhook for non-existent ZoomOAuthApp."""
         event_data = {
@@ -335,6 +350,11 @@ class TestZoomOAuthWebhooks(TestCase):
 
         # Should return 200 (webhook received) but not process anything
         self.assertEqual(response.status_code, 200)
+
+        # Verify last_verified_webhook_received_at was updated (signature was valid)
+        self.zoom_oauth_app.refresh_from_db()
+        self.assertIsNotNone(self.zoom_oauth_app.last_verified_webhook_received_at)
+        self.assertIsNone(self.zoom_oauth_app.last_unverified_webhook_received_at)
 
     def test_missing_signature_headers(self):
         """Test webhook with missing signature headers."""

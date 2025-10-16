@@ -1,9 +1,11 @@
 import json
 import logging
 import os
+from datetime import timedelta
 
 import stripe
 from django.http import HttpResponse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
@@ -38,6 +40,10 @@ class ExternalWebhookZoomOAuthAppView(View):
                 secret=zoom_oauth_app.webhook_secret,
             ):
                 logger.error(f"Invalid Zoom webhook signature for webhook for zoom oauth app {zoom_oauth_app.object_id}")
+                # Only update if it was more than 5 minutes ago to prevent excessive updates
+                if not zoom_oauth_app.last_unverified_webhook_received_at or zoom_oauth_app.last_unverified_webhook_received_at < timezone.now() - timedelta(minutes=5):
+                    zoom_oauth_app.last_unverified_webhook_received_at = timezone.now()
+                    zoom_oauth_app.save()
                 return HttpResponse(status=400)
 
             event_json = json.loads(request_body)
@@ -80,6 +86,11 @@ class ExternalWebhookZoomOAuthAppView(View):
                     return HttpResponse(status=200)
 
                 _upsert_zoom_meeting_to_zoom_oauth_connection_mapping([str(new_object.get("pmi"))], zoom_oauth_connection)
+
+            # Only update if it was more than 5 minutes ago to prevent excessive updates
+            if not zoom_oauth_app.last_verified_webhook_received_at or zoom_oauth_app.last_verified_webhook_received_at < timezone.now() - timedelta(minutes=5):
+                zoom_oauth_app.last_verified_webhook_received_at = timezone.now()
+                zoom_oauth_app.save()
 
         except ZoomOAuthApp.DoesNotExist:
             logger.error("Zoom OAuth app does not exist")
