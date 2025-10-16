@@ -96,6 +96,14 @@ def get_calendar_event_for_user(user, calendar_event_object_id):
         raise PermissionDenied
     return calendar_event
 
+def get_webhook_options_for_project(project):
+    trigger_types = [trigger_type for trigger_type in WebhookTriggerTypes]
+    if not project.organization.is_managed_zoom_oauth_enabled:
+        trigger_types.remove(WebhookTriggerTypes.ZOOM_OAUTH_CONNECTION_STATE_CHANGE)
+    if not project.organization.is_async_transcription_enabled:
+        trigger_types.remove(WebhookTriggerTypes.ASYNC_TRANSCRIPTION_STATE_CHANGE)
+    return trigger_types
+
 
 def get_partial_for_credential_type(credential_type, request, context):
     if credential_type == Credentials.CredentialTypes.ZOOM_OAUTH:
@@ -795,7 +803,7 @@ class ProjectWebhooksView(LoginRequiredMixin, ProjectUrlContextMixin, View):
         context = self.get_project_context(object_id, project)
         # Only show project-level webhooks, not bot-level ones
         context["webhooks"] = project.webhook_subscriptions.filter(bot__isnull=True).order_by("-created_at")
-        context["webhook_options"] = [trigger_type for trigger_type in WebhookTriggerTypes]
+        context["webhook_options"] = get_webhook_options_for_project(project)
         context["webhook_secret"] = base64.b64encode(webhook_secret.get_secret()).decode("utf-8")
         context["REQUIRE_HTTPS_WEBHOOKS"] = settings.REQUIRE_HTTPS_WEBHOOKS
         return render(request, "projects/project_webhooks.html", context)
@@ -976,7 +984,7 @@ class DeleteWebhookView(LoginRequiredMixin, ProjectUrlContextMixin, View):
         webhook.delete()
         context = self.get_project_context(object_id, webhook.project)
         context["webhooks"] = WebhookSubscription.objects.filter(project=webhook.project, bot__isnull=True).order_by("-created_at")
-        context["webhook_options"] = [trigger_type for trigger_type in WebhookTriggerTypes]
+        context["webhook_options"] = get_webhook_options_for_project(webhook.project)
         context["REQUIRE_HTTPS_WEBHOOKS"] = settings.REQUIRE_HTTPS_WEBHOOKS
         return render(request, "projects/project_webhooks.html", context)
 
