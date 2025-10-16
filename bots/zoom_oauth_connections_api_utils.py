@@ -102,6 +102,10 @@ def create_zoom_oauth_connection(data, project):
             zoom_oauth_connection.account_id = user_info["account_id"]
             zoom_oauth_connection.metadata = validated_data["metadata"]
 
+            # Set the state to connected
+            zoom_oauth_connection.state = ZoomOAuthConnectionStates.CONNECTED
+            zoom_oauth_connection.connection_failure_data = None
+
             # Save the zoom oauth connection
             zoom_oauth_connection.save()
 
