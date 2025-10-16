@@ -453,7 +453,7 @@ class ObjectAccessIntegrationTest(TransactionTestCase):
         # This should redirect since the event doesn't belong to the specified calendar
         self.assertEqual(response.status_code, 302)
 
-    @patch("bots.projects_views.client_id_and_secret_is_valid")
+    @patch("bots.zoom_oauth_apps_api_utils.client_id_and_secret_is_valid")
     def test_zoom_oauth_app_creation_access_control(self, mock_client_id_validation):
         """Test that ZoomOAuthApp creation is properly controlled"""
         # Mock the validation to always return True
