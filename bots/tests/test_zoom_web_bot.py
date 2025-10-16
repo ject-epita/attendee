@@ -6,7 +6,7 @@ from django.db import connection
 from django.test import TransactionTestCase
 
 from bots.bot_controller.bot_controller import BotController
-from bots.models import Bot, BotEventManager, BotEventSubTypes, BotEventTypes, BotStates, Organization, Project, Recording, RecordingTypes, TranscriptionProviders, TranscriptionTypes, ZoomOAuthApp
+from bots.models import Bot, BotEventManager, Credentials, BotEventSubTypes, BotEventTypes, BotStates, Organization, Project, Recording, RecordingTypes, TranscriptionProviders, TranscriptionTypes, ZoomOAuthApp
 
 
 # Helper functions for creating mocks
@@ -32,8 +32,8 @@ class TestZoomWebBot(TransactionTestCase):
         self.project = Project.objects.create(name="Test Project", organization=self.organization)
 
         # Recreate zoom oauth app
-        self.zoom_oauth_app = ZoomOAuthApp.objects.create(project=self.project, client_id="123")
-        self.zoom_oauth_app.set_credentials({"client_secret": "test_client_secret"})
+        self.zoom_credentials = Credentials.objects.create(project=self.project, credential_type=Credentials.CredentialTypes.ZOOM_OAUTH)
+        self.zoom_credentials.set_credentials({"client_id": "123", "client_secret": "test_client_secret"})
 
         # Create a bot for each test
         self.bot = Bot.objects.create(
