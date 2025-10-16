@@ -2969,10 +2969,12 @@ class TestZoomBot(TransactionTestCase):
             user_id="test_user_id",
             account_id="test_account_id",
         )
-        zoom_oauth_connection.set_credentials({
-            "access_token": "test_access_token",
-            "refresh_token": "test_refresh_token",
-        })
+        zoom_oauth_connection.set_credentials(
+            {
+                "access_token": "test_access_token",
+                "refresh_token": "test_refresh_token",
+            }
+        )
 
         # Create mapping for the meeting
         meeting_id = "123456789"

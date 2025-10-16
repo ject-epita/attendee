@@ -1,3 +1,5 @@
+import logging
+
 from drf_spectacular.openapi import OpenApiResponse
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema
 from rest_framework import status
@@ -6,12 +8,11 @@ from rest_framework.pagination import CursorPagination
 from rest_framework.response import Response
 
 from .authentication import ApiKeyAuthentication
+from .models import ZoomOAuthConnection
 from .serializers import CreateZoomOAuthConnectionSerializer, ZoomOAuthConnectionSerializer
 from .tasks.sync_zoom_oauth_connection_task import enqueue_sync_zoom_oauth_connection_task
 from .throttling import ProjectPostThrottle
 from .zoom_oauth_connections_api_utils import create_zoom_oauth_connection
-from .models import ZoomOAuthConnection
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,6 @@ class ZoomOAuthConnectionListCreateView(GenericAPIView):
     throttle_classes = [ProjectPostThrottle]
     pagination_class = ZoomOAuthConnectionCursorPagination
     serializer_class = ZoomOAuthConnectionSerializer
-
 
     @extend_schema(
         operation_id="List Zoom OAuth Connections",
@@ -124,6 +124,7 @@ class ZoomOAuthConnectionListCreateView(GenericAPIView):
         enqueue_sync_zoom_oauth_connection_task(zoom_oauth_connection)
 
         return Response(ZoomOAuthConnectionSerializer(zoom_oauth_connection).data, status=status.HTTP_201_CREATED)
+
 
 class ZoomOAuthConnectionDetailPatchDeleteView(GenericAPIView):
     authentication_classes = [ApiKeyAuthentication]

@@ -56,7 +56,6 @@ def deliver_webhook(self, delivery_id):
         related_object_specific_webhook_data["user_id"] = delivery.zoom_oauth_connection.user_id
         related_object_specific_webhook_data["account_id"] = delivery.zoom_oauth_connection.account_id
 
-
     # Prepare the webhook payload
     webhook_data = {
         "idempotency_key": str(delivery.idempotency_key),
