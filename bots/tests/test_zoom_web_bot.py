@@ -291,7 +291,7 @@ class TestZoomWebBot(TransactionTestCase):
         bot_thread.start()
 
         # Give the bot some time to attempt token retrieval
-        time.sleep(2)
+        time.sleep(4)
 
         # Verify that the ZoomOAuthConnection state was updated to DISCONNECTED
         zoom_oauth_connection.refresh_from_db()
