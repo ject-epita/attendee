@@ -37,7 +37,7 @@ class ExternalWebhookZoomOAuthAppView(View):
                 signature=signature_header,
                 secret=zoom_oauth_app.webhook_secret,
             ):
-                logger.error("Invalid Zoom webhook signature")
+                logger.error(f"Invalid Zoom webhook signature for webhook for zoom oauth app {zoom_oauth_app.object_id}")
                 return HttpResponse(status=400)
 
             event_json = json.loads(request_body)
