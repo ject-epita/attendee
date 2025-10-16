@@ -284,7 +284,6 @@ class TestZoomWebBot(TransactionTestCase):
 
         # Create bot controller
         controller = BotController(self.bot.id)
-        controller.adapter = MagicMock()
 
         # Run the bot in a separate thread since it has an event loop
         bot_thread = threading.Thread(target=controller.run)
@@ -313,10 +312,6 @@ class TestZoomWebBot(TransactionTestCase):
         webhook_attempt = webhook_attempts.first()
         self.assertEqual(webhook_attempt.payload["state"], "disconnected")
         self.assertIsNotNone(webhook_attempt.payload["connection_failure_data"])
-
-        # Cleanup
-        controller.cleanup()
-        bot_thread.join(timeout=5)
 
         # Close the database connection since we're in a thread
         connection.close()
