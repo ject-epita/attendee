@@ -4,7 +4,7 @@ import os
 from datetime import timedelta
 
 import stripe
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
@@ -12,7 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .models import ZoomOAuthApp, ZoomOAuthConnection
 from .stripe_utils import process_checkout_session_completed, process_customer_updated, process_payment_intent_succeeded
-from .zoom_oauth_connections_utils import _upsert_zoom_meeting_to_zoom_oauth_connection_mapping, _verify_zoom_webhook_signature
+from .zoom_oauth_connections_utils import _upsert_zoom_meeting_to_zoom_oauth_connection_mapping, _verify_zoom_webhook_signature, compute_zoom_webhook_validation_response
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +91,12 @@ class ExternalWebhookZoomOAuthAppView(View):
             if not zoom_oauth_app.last_verified_webhook_received_at or zoom_oauth_app.last_verified_webhook_received_at < timezone.now() - timedelta(minutes=5):
                 zoom_oauth_app.last_verified_webhook_received_at = timezone.now()
                 zoom_oauth_app.save()
+
+            # Handle endpoint.url_validation event type
+            if event_type == "endpoint.url_validation":
+                json_response = compute_zoom_webhook_validation_response(event_json.get("payload", {}).get("plainToken"), zoom_oauth_app.webhook_secret)
+                logger.info(f"Received Zoom OAuth app webhook event for endpoint URL validation: {event_json}. Returning JSON response: {json_response}")
+                return JsonResponse(json_response, status=200)
 
         except ZoomOAuthApp.DoesNotExist:
             logger.error("Zoom OAuth app does not exist")

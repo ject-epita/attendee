@@ -479,3 +479,41 @@ class TestZoomOAuthWebhooks(TestCase):
         # Verify there's only one mapping (not duplicated)
         mappings_count = ZoomMeetingToZoomOAuthConnectionMapping.objects.filter(meeting_id="123456789").count()
         self.assertEqual(mappings_count, 1)
+
+    def test_endpoint_url_validation_event(self):
+        """Test successful handling of endpoint.url_validation event."""
+        plain_token = "qgg8vlvZRS6UYooatFL8Aw"
+        event_data = {
+            "event": "endpoint.url_validation",
+            "payload": {
+                "plainToken": plain_token,
+            },
+        }
+        body = json.dumps(event_data)
+        timestamp = "1234567890"
+        signature = self._generate_zoom_signature(body, timestamp, "test_webhook_secret")
+
+        response = self.client.post(
+            self.url,
+            data=body,
+            content_type="application/json",
+            HTTP_X_ZM_SIGNATURE=signature,
+            HTTP_X_ZM_REQUEST_TIMESTAMP=timestamp,
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        # Verify the response contains the correct JSON structure
+        response_data = json.loads(response.content)
+        self.assertIn("plainToken", response_data)
+        self.assertIn("encryptedToken", response_data)
+        self.assertEqual(response_data["plainToken"], plain_token)
+
+        # Verify the encryptedToken is correctly computed using HMAC SHA-256
+        expected_encrypted_token = hmac.new("test_webhook_secret".encode("utf-8"), plain_token.encode("utf-8"), hashlib.sha256).hexdigest()
+        self.assertEqual(response_data["encryptedToken"], expected_encrypted_token)
+
+        # Verify last_verified_webhook_received_at was updated
+        self.zoom_oauth_app.refresh_from_db()
+        self.assertIsNotNone(self.zoom_oauth_app.last_verified_webhook_received_at)
+        self.assertIsNone(self.zoom_oauth_app.last_unverified_webhook_received_at)

@@ -53,6 +53,31 @@ def _verify_zoom_webhook_signature(body: str, timestamp: str, signature: str, se
     return expected_signature == signature
 
 
+def compute_zoom_webhook_validation_response(plain_token: str, secret_token: str) -> dict:
+    """
+    Compute the response for a Zoom webhook validation request.
+
+    Zoom sends a challenge-response validation request when setting up a webhook endpoint.
+    This function creates the required HMAC SHA-256 hash of the plainToken using the
+    webhook secret token.
+
+    Args:
+        plain_token: The plainToken value from the webhook request payload
+        secret_token: The webhook secret token configured in Zoom
+
+    Returns:
+        dict: A dictionary containing 'plainToken' and 'encryptedToken' keys
+        Example: {
+            "plainToken": "qgg8vlvZRS6UYooatFL8Aw",
+            "encryptedToken": "23a89b634c017e5364a1c8d9c8ea909b60dd5599e2bb04bb1558d9c3a121faa5"
+        }
+    """
+    # Create HMAC SHA-256 hash with secret_token as salt and plain_token as the string to hash
+    encrypted_token = hmac.new(secret_token.encode("utf-8"), plain_token.encode("utf-8"), hashlib.sha256).hexdigest()
+
+    return {"plainToken": plain_token, "encryptedToken": encrypted_token}
+
+
 def _raise_if_error_is_authentication_error(e: requests.RequestException):
     error_code = e.response.json().get("error")
     if error_code == "invalid_grant" or error_code == "invalid_client":
