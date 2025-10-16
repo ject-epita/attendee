@@ -191,6 +191,10 @@ def _upsert_zoom_meeting_to_zoom_oauth_connection_mapping(zoom_meeting_ids: list
 
 
 def _handle_zoom_api_authentication_error(zoom_oauth_connection: ZoomOAuthConnection, e: ZoomAPIAuthenticationError):
+    if zoom_oauth_connection.state == ZoomOAuthConnectionStates.DISCONNECTED:
+        logger.info(f"Zoom OAuth connection {zoom_oauth_connection.id} is already in state DISCONNECTED, skipping authentication error handling")
+        return
+
     # Update zoom oauth connection state to indicate failure
     with transaction.atomic():
         zoom_oauth_connection.state = ZoomOAuthConnectionStates.DISCONNECTED

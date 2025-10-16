@@ -17,6 +17,7 @@ from django.views import View
 from django.views.generic import ListView
 
 from accounts.models import User, UserRole
+from bots.tasks import validate_zoom_oauth_connections
 
 from .bots_api_utils import BotCreationSource, create_bot, create_webhook_subscription
 from .launch_bot_utils import launch_bot
@@ -95,6 +96,7 @@ def get_calendar_event_for_user(user, calendar_event_object_id):
     if user.role != UserRole.ADMIN and not ProjectAccess.objects.filter(project=calendar_event.calendar.project, user=user).exists():
         raise PermissionDenied
     return calendar_event
+
 
 def get_webhook_options_for_project(project):
     trigger_types = [trigger_type for trigger_type in WebhookTriggerTypes]
@@ -271,6 +273,11 @@ class CreateZoomOAuthAppView(LoginRequiredMixin, ProjectUrlContextMixin, View):
             # If they are updating the client secret, validate it
             if client_secret and not client_id_and_secret_is_valid(zoom_oauth_app.client_id, client_secret):
                 return HttpResponse("Invalid client secret", status=400)
+
+            # If the client_secret was valid and is not equal to the current client_secret, validate the zoom oauth connections associated with this app
+            # Since they might have been disconnected due to the previous client_secret being invalid
+            if client_secret and client_secret != zoom_oauth_app.client_secret:
+                validate_zoom_oauth_connections.delay(zoom_oauth_app.id)
 
             # Build updated credentials dict, preserving existing values if new ones are blank
             updated_credentials = {"client_secret": client_secret if client_secret else existing_credentials.get("client_secret", ""), "webhook_secret": webhook_secret if webhook_secret else existing_credentials.get("webhook_secret", "")}
