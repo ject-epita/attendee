@@ -18,9 +18,7 @@ class TestCreateZoomOAuthConnection(TestCase):
             client_id="test_client_id_123",
         )
         # Set credentials including client_secret
-        self.zoom_oauth_app.set_credentials(
-            {"client_secret": "test_client_secret_456", "webhook_secret": "test_webhook_secret"}
-        )
+        self.zoom_oauth_app.set_credentials({"client_secret": "test_client_secret_456", "webhook_secret": "test_webhook_secret"})
 
     @patch("bots.zoom_oauth_connections_api_utils._get_user_info")
     @patch("bots.zoom_oauth_connections_api_utils._exchange_access_code_for_tokens")
@@ -102,5 +100,3 @@ class TestCreateZoomOAuthConnection(TestCase):
 
         # Verify no connection was created in the database
         self.assertEqual(ZoomOAuthConnection.objects.count(), 0)
-
-
