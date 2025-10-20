@@ -2,7 +2,7 @@ services:
   attendee-worker-local:
     build: ./
     volumes:
-     - /home/ject/attendee:/attendee
+     - attendee:/attendee
     networks:
       - attendee_network
     environment:
@@ -17,7 +17,7 @@ services:
   attendee-scheduler-local:
     build: ./
     volumes:
-     - /home/ject/attendee:/attendee
+     - attendee:/attendee
     networks:
       - attendee_network
     environment:
@@ -30,7 +30,7 @@ services:
   attendee-app-local:
     build: ./
     volumes:
-     - /home/ject/attendee:/attendee
+     - attendee:/attendee
     networks:
       - attendee_network
     environment:
@@ -43,7 +43,7 @@ services:
   attendee-webpage-streamer-local:
     build: ./
     volumes:
-     - /home/ject/attendee:/attendee
+     - attendee:/attendee
     networks:
       - attendee_network
     environment:
@@ -85,3 +85,4 @@ networks:
 volumes:
   postgres:
   redis:
+  attendee:
