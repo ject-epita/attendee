@@ -11,6 +11,7 @@ services:
       - DJANGO_SETTINGS_MODULE=attendee.settings.production
       - ENABLE_CHROME_SANDBOX=true
       - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_SSL_REQUIRE=${POSTGRES_SSL_REQUIRE}
     command: "celery -A attendee worker -l INFO"
     security_opt:
       - seccomp=./bots/web_bot_adapter/chrome_seccomp.json
@@ -26,6 +27,7 @@ services:
       - REDIS_URL=redis://redis:6379/5
       - DJANGO_SETTINGS_MODULE=attendee.settings.production
       - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_SSL_REQUIRE=${POSTGRES_SSL_REQUIRE}
     command: "python manage.py run_scheduler"
     entrypoint: []
 
@@ -40,6 +42,7 @@ services:
       - REDIS_URL=redis://redis:6379/5
       - DJANGO_SETTINGS_MODULE=attendee.settings.production
       - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_SSL_REQUIRE=${POSTGRES_SSL_REQUIRE}
     command: python manage.py runserver 0.0.0.0:8000
     entrypoint: []
 
@@ -53,6 +56,7 @@ services:
       - DJANGO_SETTINGS_MODULE=attendee.settings.production
       - ENABLE_CHROME_SANDBOX=true
       - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_SSL_REQUIRE=${POSTGRES_SSL_REQUIRE}
     command: "python bots/webpage_streamer/run_webpage_streamer.py"
     security_opt:
       - seccomp=./bots/web_bot_adapter/chrome_seccomp.json
