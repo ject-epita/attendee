@@ -36,7 +36,7 @@ services:
     volumes:
       - attendee:/attendee
     ports:
-      - "7888":"8000"
+      - "7888:8000"
     networks:
       - attendee_network
     environment:
