@@ -14,6 +14,12 @@ def home(request):
             name=f"{request.user.email}'s project",
             organization=request.user.organization,
         )
+        # Ensure the authenticated user can access the project that was just
+        # created for them. Regular (non-admin) users do not automatically get
+        # access to new organization projects, which previously resulted in an
+        # infinite redirect loop when they landed on the dashboard. Grant the
+        # user explicit access so they can be redirected successfully.
+        project.project_accesses.get_or_create(user=request.user)
     if project:
         return redirect("projects:project-dashboard", object_id=project.object_id)
     raise Http404("No projects found for this organization. You need to create a project first.")
