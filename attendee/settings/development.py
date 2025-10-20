@@ -5,7 +5,7 @@ from .base import *
 DEBUG = True
 SITE_DOMAIN = "attendee.ject.fr"
 ALLOWED_HOSTS = ["tendee-stripe-hooks.ngrok.io", "localhost", "attendee.ject.fr"]
-CSRF_TRUSTED_ORIGINS = ["attendee.ject.fr"]
+CSRF_TRUSTED_ORIGINS = ["https://attendee.ject.fr"]
 
 DATABASES = {
     "default": {
