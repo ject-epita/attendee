@@ -2,7 +2,7 @@ services:
   attendee-worker-local:
     build: ./
     volumes:
-     - attendee:/attendee
+      - attendee:/attendee
     networks:
       - attendee_network
     environment:
@@ -19,7 +19,7 @@ services:
   attendee-scheduler-local:
     build: ./
     volumes:
-     - attendee:/attendee
+      - attendee:/attendee
     networks:
       - attendee_network
     environment:
@@ -34,7 +34,9 @@ services:
   attendee-app-local:
     build: ./
     volumes:
-     - attendee:/attendee
+      - attendee:/attendee
+    ports:
+      - "7888":"8000"
     networks:
       - attendee_network
     environment:
@@ -49,7 +51,7 @@ services:
   attendee-webpage-streamer-local:
     build: ./
     volumes:
-     - attendee:/attendee
+      - attendee:/attendee
     networks:
       - attendee_network
     environment:
