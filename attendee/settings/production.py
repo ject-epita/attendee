@@ -4,7 +4,8 @@ import dj_database_url
 
 from .base import *
 
-DEBUG = False
+DEBUG = True
+SITE_DOMAIN = "attendee.ject.fr"
 ALLOWED_HOSTS = ["*"]
 
 DATABASES = {
@@ -21,11 +22,11 @@ CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SECURE_SSL_REDIRECT = False
-SECURE_HSTS_SECONDS = 60
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+#SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+#SECURE_SSL_REDIRECT = False
+#SECURE_HSTS_SECONDS = 60
+#SESSION_COOKIE_SECURE = True
+#CSRF_COOKIE_SECURE = True
 
 if os.getenv("DISABLE_EMAIL", "false") != "true":
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
