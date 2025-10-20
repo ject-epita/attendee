@@ -10,7 +10,7 @@ ALLOWED_HOSTS = ["*"]
 
 DATABASES = {
     "default": dj_database_url.config(
-        env="DATABASE_URL",
+        env="DATABASE_URL2",
         conn_max_age=600,
         conn_health_checks=True,
         ssl_require=os.getenv("POSTGRES_SSL_REQUIRE", "true") == "true",
