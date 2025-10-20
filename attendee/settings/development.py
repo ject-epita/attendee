@@ -3,8 +3,8 @@ import os
 from .base import *
 
 DEBUG = True
-SITE_DOMAIN = "localhost:8000"
-ALLOWED_HOSTS = ["tendee-stripe-hooks.ngrok.io", "localhost"]
+SITE_DOMAIN = "attendee.ject.fr"
+ALLOWED_HOSTS = ["tendee-stripe-hooks.ngrok.io", "localhost", "attendee.ject.fr"]
 
 DATABASES = {
     "default": {
