@@ -59,8 +59,7 @@ def build_site_url(path=""):
 
 
 def send_sync_command(bot, command="sync"):
-    redis_url = os.getenv("REDIS_URL") + ("?ssl_cert_reqs=none" if os.getenv("DISABLE_REDIS_SSL") else "")
-    redis_client = redis.from_url(redis_url)
+    redis_client = redis.from_url(settings.REDIS_URL_WITH_PARAMS)
     channel = f"bot_{bot.id}"
     message = {"command": command}
     redis_client.publish(channel, json.dumps(message))
@@ -226,6 +225,7 @@ def create_bot(data: dict, source: BotCreationSource, project: Project) -> tuple
     callback_settings = serializer.validated_data["callback_settings"]
     external_media_storage_settings = serializer.validated_data["external_media_storage_settings"]
     voice_agent_settings = serializer.validated_data["voice_agent_settings"]
+    kubernetes_settings = serializer.validated_data["kubernetes_settings"]
     initial_state = BotStates.SCHEDULED if join_at else BotStates.READY
 
     error = validate_external_media_storage_settings(external_media_storage_settings, project)
@@ -249,6 +249,7 @@ def create_bot(data: dict, source: BotCreationSource, project: Project) -> tuple
         "callback_settings": callback_settings,
         "external_media_storage_settings": external_media_storage_settings,
         "voice_agent_settings": voice_agent_settings,
+        "kubernetes_settings": kubernetes_settings,
     }
 
     try:
@@ -402,12 +403,14 @@ def patch_bot(bot: Bot, data: dict) -> tuple[Bot | None, dict | None]:
             previous_bot_name = bot.name
             bot.name = validated_data.get("bot_name", bot.name)
             bot.metadata = validated_data.get("metadata", bot.metadata)
+            if validated_data.get("recording_settings"):
+                bot.settings["recording_settings"] = validated_data.get("recording_settings")
 
             # join_at, meeting_url, bot_name and bot_image can only be updated when the bot is scheduled state. For updating image after the bot is in a meeting, use the output_image endpoint.
-            update_only_legal_for_scheduled_bots = bot.join_at != previous_join_at or bot.meeting_url != previous_meeting_url or bot.name != previous_bot_name or validated_data.get("bot_image")
+            update_only_legal_for_scheduled_bots = bot.join_at != previous_join_at or bot.meeting_url != previous_meeting_url or bot.name != previous_bot_name or validated_data.get("bot_image") or validated_data.get("recording_settings")
             if bot.state != BotStates.SCHEDULED:
                 if update_only_legal_for_scheduled_bots:
-                    return None, {"error": f"Bot is in state {BotStates.state_to_api_code(bot.state)} but join_at, meeting_url, bot_name and bot_image can only be updated when in the scheduled state"}
+                    return None, {"error": f"Bot is in state {BotStates.state_to_api_code(bot.state)} but join_at, meeting_url, bot_name, bot_image and recording_settings can only be updated when in the scheduled state"}
 
             bot.save()
 

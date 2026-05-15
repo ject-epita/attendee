@@ -2,7 +2,6 @@ import base64
 import html
 import json
 import logging
-import os
 import tempfile
 import uuid
 import xml.etree.ElementTree as ET
@@ -11,6 +10,7 @@ from datetime import timedelta
 from urllib.parse import urlencode
 
 import redis
+from django.conf import settings
 from django.urls import reverse
 from saml2 import BINDING_HTTP_POST
 
@@ -20,7 +20,7 @@ from saml2.saml import NAMEID_FORMAT_EMAILADDRESS, NameID
 from saml2.server import Server
 
 from bots.bots_api_utils import build_site_url
-from bots.models import Bot, GoogleMeetBotLogin
+from bots.models import Bot, BotLogin, BotLoginPlatform
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +32,10 @@ def get_google_meet_set_cookie_url(session_id):
     return google_meet_set_cookie_url
 
 
-def create_google_meet_sign_in_session(bot: Bot, google_meet_bot_login: GoogleMeetBotLogin):
+def create_google_meet_sign_in_session(bot: Bot, google_meet_bot_login: BotLogin):
     session_id = str(uuid.uuid4())
     redis_key = f"google_meet_sign_in_session:{session_id}"
-    redis_url = os.getenv("REDIS_URL") + ("?ssl_cert_reqs=none" if os.getenv("DISABLE_REDIS_SSL") else "")
-    redis_client = redis.from_url(redis_url)
+    redis_client = redis.from_url(settings.REDIS_URL_WITH_PARAMS)
     # Save for 30 minutes
     session_data = {
         "bot_object_id": bot.object_id,
@@ -48,8 +47,7 @@ def create_google_meet_sign_in_session(bot: Bot, google_meet_bot_login: GoogleMe
 
 def get_bot_login_for_google_meet_sign_in_session(session_id):
     redis_key = f"google_meet_sign_in_session:{session_id}"
-    redis_url = os.getenv("REDIS_URL") + ("?ssl_cert_reqs=none" if os.getenv("DISABLE_REDIS_SSL") else "")
-    redis_client = redis.from_url(redis_url)
+    redis_client = redis.from_url(settings.REDIS_URL_WITH_PARAMS)
     session_data_raw = redis_client.get(redis_key)
     if not session_data_raw:
         logger.info(f"No session data found for google_meet_sign_in_session: {session_id}")
@@ -58,14 +56,14 @@ def get_bot_login_for_google_meet_sign_in_session(session_id):
     try:
         session_data = json.loads(session_data_raw)
     except Exception as e:
-        logger.warning(f"Error loading session data for google_meet_sign_in_session: {session_id}. Data: {session_data}. Error: {e}")
+        logger.warning(f"Error loading session data for google_meet_sign_in_session: {session_id}. Data: {session_data_raw}. Error: {e}")
         return None
 
     bot_object_id = session_data.get("bot_object_id")
     google_meet_bot_login_object_id = session_data.get("google_meet_bot_login_object_id")
 
     bot = Bot.objects.filter(object_id=bot_object_id).first()
-    google_meet_bot_login = GoogleMeetBotLogin.objects.filter(object_id=google_meet_bot_login_object_id, group__project=bot.project).first()
+    google_meet_bot_login = BotLogin.objects.filter(object_id=google_meet_bot_login_object_id, group__project=bot.project, group__platform=BotLoginPlatform.GOOGLE_MEET).first()
     if not google_meet_bot_login:
         logger.info(f"No google_meet_bot_login found for google_meet_sign_in_session: {session_id}. Data: {session_data}")
         return None

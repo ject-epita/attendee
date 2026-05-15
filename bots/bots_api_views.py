@@ -432,6 +432,7 @@ class OutputVideoView(APIView):
             media_type=BotMediaRequestMediaTypes.VIDEO,
             media_url=serializer.validated_data["url"],
             loop=serializer.validated_data["loop"],
+            mute_video=serializer.validated_data["mute_video"],
         )
 
         # Send sync command to notify bot of new media request
@@ -635,7 +636,7 @@ class DeleteDataView(APIView):
         except Bot.DoesNotExist:
             return Response({"error": "Bot not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            logging.error(f"Error deleting bot data: {str(e)} (bot_id={object_id})")
+            logging.exception(f"Error deleting bot data: {str(e)}", extra={"bot_id": object_id})
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -680,7 +681,7 @@ class BotLeaveView(APIView):
 
             return Response(BotSerializer(bot).data, status=status.HTTP_200_OK)
         except ValidationError as e:
-            logging.error(f"Error leaving meeting: {str(e)} (bot_id={object_id})")
+            logging.exception(f"Error leaving meeting: {str(e)}", extra={"bot_id": object_id})
             return Response({"error": e.messages[0]}, status=status.HTTP_400_BAD_REQUEST)
         except Bot.DoesNotExist:
             return Response({"error": "Bot not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -855,7 +856,7 @@ class TranscriptView(APIView):
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
-            if not recording.audio_chunks.exclude(audio_blob=b"").exists():
+            if not recording.audio_chunks.exclude(audio_blob=b"").exists() and not recording.audio_chunks.exclude(audio_blob_remote_file=None).exists():
                 return Response({"error": "Cannot create async transcription because the per-speaker audio data has been deleted or was never created."}, status=status.HTTP_400_BAD_REQUEST)
 
             existing_async_transcription_count = AsyncTranscription.objects.filter(
@@ -974,7 +975,7 @@ class BotDetailView(APIView):
     @extend_schema(
         operation_id="Patch Bot",
         summary="Update a bot",
-        description="Updates a bot. The join_at, meeting_url, bot_name and bot_image fields can only be updated when the bot is in the scheduled state. The metadata field can be updated at any time.",
+        description="Updates a bot. The join_at, meeting_url, bot_name, bot_image and recording_settings fields can only be updated when the bot is in the scheduled state. The metadata field can be updated at any time.",
         request=PatchBotSerializer,
         responses={
             200: OpenApiResponse(
@@ -1364,7 +1365,7 @@ class PauseRecordingView(APIView):
     @extend_schema(
         operation_id="Pause Recording",
         summary="Pause the bot's recording",
-        description="Pauses the recording for the specified bot. This functionality is in beta and only supported for Google Meet and MS Teamsbots.",
+        description="Pauses the recording for the specified bot.",
         responses={
             200: OpenApiResponse(
                 response=BotSerializer,

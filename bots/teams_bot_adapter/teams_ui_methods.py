@@ -1,4 +1,5 @@
 import logging
+import random
 import time
 
 from selenium.common.exceptions import ElementClickInterceptedException, ElementNotInteractableException, NoSuchElementException, StaleElementReferenceException, TimeoutException
@@ -7,12 +8,17 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from bots.models import RecordingViews
-from bots.web_bot_adapter.ui_methods import UiBlockedByCaptchaException, UiCouldNotClickElementException, UiCouldNotJoinMeetingWaitingRoomTimeoutException, UiCouldNotLocateElementException, UiLoginAttemptFailedException, UiLoginRequiredException, UiMeetingNotFoundException, UiRequestToJoinDeniedException, UiRetryableExpectedException
+from bots.web_bot_adapter.ui_methods import UiBlockedByCaptchaException, UiCouldNotClickElementException, UiCouldNotJoinMeetingWaitingRoomTimeoutException, UiCouldNotLocateElementException, UiLoginAttemptFailedException, UiLoginRequiredException, UiMeetingNotFoundException, UiRequestToJoinDeniedException, UiRetryableException, UiRetryableExpectedException
 
 logger = logging.getLogger(__name__)
 
 
 class UiTeamsBlockingUsException(UiRetryableExpectedException):
+    def __init__(self, message, step=None, inner_exception=None):
+        super().__init__(message, step, inner_exception)
+
+
+class UiWaitingRoomTransitionFailedException(UiRetryableException):
     def __init__(self, message, step=None, inner_exception=None):
         super().__init__(message, step, inner_exception)
 
@@ -58,7 +64,10 @@ class TeamsUIMethods:
         logger.info("Waiting for the microphone button...")
         microphone_button = self.locate_element(step="turn_off_microphone_button", condition=EC.presence_of_element_located((By.CSS_SELECTOR, '[data-tid="toggle-mute"]')), wait_time_seconds=60)
         logger.info("Clicking the microphone button...")
-        self.click_element(microphone_button, "turn_off_microphone_button")
+        if microphone_button.get_attribute("aria-checked") == "true" or microphone_button.get_attribute("checked") == "true":
+            self.click_element(microphone_button, "turn_off_microphone_button")
+        else:
+            logger.info("Microphone button is already off, not clicking it")
 
         logger.info("Waiting for the camera button...")
         camera_button = self.locate_element(step="turn_off_camera_button", condition=EC.presence_of_element_located((By.CSS_SELECTOR, '[data-tid="toggle-video"]')), wait_time_seconds=6)
@@ -75,8 +84,13 @@ class TeamsUIMethods:
             return True
         return False
 
+    def sleep_for_random_amount_of_time(self):
+        time_to_sleep_for = int(random.uniform(1, 90))
+        logger.info(f"Sleeping for {time_to_sleep_for} seconds.")
+        time.sleep(time_to_sleep_for)
+
     def fill_out_name_input(self):
-        num_attempts = 30
+        num_attempts = 60
         logger.info("Waiting for the name input field...")
         for attempt_index in range(num_attempts):
             try:
@@ -87,13 +101,14 @@ class TeamsUIMethods:
             except TimeoutException as e:
                 self.look_for_microsoft_login_form_element("name_input")
 
-                if self.teams_bot_login_credentials and self.teams_bot_login_should_be_used and self.join_now_button_is_present():
+                if self.teams_bot_login_is_available and self.teams_bot_login_should_be_used and self.join_now_button_is_present():
                     logger.info("Join now button is present. Assuming name input is not present because we don't need to fill it out, so returning.")
                     return
 
                 last_check_timed_out = attempt_index == num_attempts - 1
                 if last_check_timed_out:
                     logger.info("Could not find name input. Timed out. Raising UiCouldNotLocateElementException")
+                    self.sleep_for_random_amount_of_time()
                     raise UiCouldNotLocateElementException("Could not find name input. Timed out.", "name_input", e)
             except Exception as e:
                 logger.info(f"Could not find name input. Unknown error {e} of type {type(e)}. Raising UiCouldNotLocateElementException")
@@ -132,6 +147,11 @@ class TeamsUIMethods:
         if waiting_room_timeout_exceeded:
             # If there is more than one participant in the meeting, then the bot was just let in and we should not timeout
             if len(self.participants_info) > 1:
+                waiting_room_timeout_exceeded_by_more_than_three_minutes = time.time() - waiting_room_timeout_started_at > self.automatic_leave_configuration.waiting_room_timeout_seconds + 180
+                if waiting_room_timeout_exceeded_by_more_than_three_minutes:
+                    logger.warning("Waiting room timeout exceeded, but there is more than one participant in the meeting. More than three minutes have passed since the timeout started. This is unexpected, throwing exception.")
+                    raise UiWaitingRoomTransitionFailedException("Waiting room timeout exceeded, but there is more than one participant in the meeting. More than three minutes have passed since the timeout started. This is unexpected.", step)
+
                 logger.info("Waiting room timeout exceeded, but there is more than one participant in the meeting. Not aborting join attempt.")
                 return
 
@@ -188,6 +208,12 @@ class TeamsUIMethods:
     def check_if_blocked_by_captcha(self, step):
         captcha_element = self.find_element_by_selector(By.XPATH, '//*[contains(text(), "Verify you\'re a real person")]')
         if captcha_element:
+            # The captcha may be being shown because we need to login.
+            # If a login is available, but we aren't using it, we should login and retry and see if the captcha goes away.
+            if self.teams_bot_login_is_available and not self.teams_bot_login_should_be_used:
+                logger.info("Captcha detected. Teams bot login is available and not being used, so we will retry by logging in")
+                raise UiLoginRequiredException("Sign in required", step)
+
             logger.info("Captcha detected. Raising UiBlockedByCaptchaException")
             raise UiBlockedByCaptchaException("Captcha detected", step)
 
@@ -248,7 +274,7 @@ class TeamsUIMethods:
 
     # Returns nothing if succeeded, raises an exception if failed
     def attempt_to_join_meeting(self):
-        if self.teams_bot_login_credentials and self.teams_bot_login_should_be_used:
+        if self.teams_bot_login_is_available and self.teams_bot_login_should_be_used:
             self.login_to_microsoft_account()
 
         self.driver.get(self.meeting_url)
@@ -290,7 +316,7 @@ class TeamsUIMethods:
 
     def disable_incoming_video_in_ui(self):
         logger.info("Waiting for the view button...")
-        view_button = self.locate_element(step="view_button", condition=EC.presence_of_element_located((By.CSS_SELECTOR, "#view-mode-button, #custom-view-button")), wait_time_seconds=60)
+        view_button = self.locate_element(step="view_button", condition=EC.element_to_be_clickable((By.CSS_SELECTOR, "#view-mode-button, #custom-view-button")), wait_time_seconds=60)
         logger.info("Clicking the view button...")
         self.click_element(view_button, "disable_incoming_video:view_button")
 
@@ -300,7 +326,7 @@ class TeamsUIMethods:
         logger.info("Waiting for the turn off incoming video button...")
         for attempt_index in range(num_attempts):
             try:
-                turn_off_incoming_video_button = WebDriverWait(self.driver, 1).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[aria-label='Turn off incoming video'], #incoming-video-button")))
+                turn_off_incoming_video_button = WebDriverWait(self.driver, 1).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[aria-label='Turn off incoming video'], [aria-label='Turn off all videos'], #incoming-video-button, #toggle-incoming-video-button")))
                 logger.info("Turn off incoming video button found")
                 turn_off_incoming_video_button.click()
                 return
@@ -346,15 +372,23 @@ class TeamsUIMethods:
         cancel_button = self.locate_element(step="cancel_button", condition=EC.presence_of_element_located((By.CSS_SELECTOR, '[data-tid="prejoin-cancel-button"]')), wait_time_seconds=10)
         logger.info("Clicking the cancel button...")
         self.click_element(cancel_button, "cancel_button")
+        # You need to wait a bit after canceling because we close the browser immediately after this.
+        # If you close the browser immediately, then teams will not show them as leaving
+        time.sleep(1)
 
     def login_to_microsoft_account(self):
+        credentials = self.fetch_teams_bot_login_credentials_callback()
+
+        if not credentials:
+            raise UiLoginAttemptFailedException("Teams bot login credentials are not available", "login_to_microsoft_account")
+
         logger.info("Navigate to login screen")
         self.driver.get("https://www.office.com/login")
 
         logger.info("Waiting for the username input...")
         username_input = self.locate_element(step="username_input", condition=EC.presence_of_element_located((By.CSS_SELECTOR, 'input[name="loginfmt"]')), wait_time_seconds=10)
         logger.info("Filling in the username...")
-        username_input.send_keys(self.teams_bot_login_credentials["username"])
+        username_input.send_keys(credentials["username"])
 
         time.sleep(1)
 
@@ -368,7 +402,7 @@ class TeamsUIMethods:
         logger.info("Waiting for the password input...")
         password_input = self.locate_element(step="password_input", condition=EC.presence_of_element_located((By.CSS_SELECTOR, 'input[name="passwd"]')), wait_time_seconds=10)
         logger.info("Filling in the password...")
-        password_input.send_keys(self.teams_bot_login_credentials["password"])
+        password_input.send_keys(credentials["password"])
 
         time.sleep(1)
 

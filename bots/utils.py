@@ -8,8 +8,11 @@ from pydub import AudioSegment
 from .meeting_url_utils import meeting_type_from_url
 from .models import (
     MeetingTypes,
+    ParticipantEvent,
+    ParticipantEventTypes,
     TranscriptionProviders,
 )
+from .templatetags.bot_filters import participant_color as compute_participant_color
 
 logger = logging.getLogger(__name__)
 
@@ -273,21 +276,20 @@ def scale_i420(frame, frame_size, new_size):
     return np.concatenate([final_y.flatten(), final_u.flatten(), final_v.flatten()]).astype(np.uint8).tobytes()
 
 
-def png_to_yuv420_frame(png_bytes: bytes) -> tuple:
+def image_to_yuv420_frame(image_bytes: bytes) -> tuple:
     """
-    Convert PNG image bytes to YUV420 (I420) format without resizing,
+    Convert image bytes (PNG, JPEG, etc.) to YUV420 (I420) format without resizing,
     and return the dimensions of the resulting image. The conversion does not work unless the
     image dimensions are even, so the image is cropped slightly to make the dimensions even.
 
     Args:
-        png_bytes (bytes): Input PNG image as bytes
+        image_bytes (bytes): Input image as bytes (any format supported by OpenCV)
 
     Returns:
         tuple: (YUV420 formatted frame data, width, height)
     """
-    # Convert PNG bytes to numpy array
-    png_array = np.frombuffer(png_bytes, np.uint8)
-    bgr_frame = cv2.imdecode(png_array, cv2.IMREAD_COLOR)
+    img_array = np.frombuffer(image_bytes, np.uint8)
+    bgr_frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
     # Get original dimensions
     height, width = bgr_frame.shape[:2]
@@ -313,6 +315,10 @@ def png_to_yuv420_frame(png_bytes: bytes) -> tuple:
 
     # Return frame data and dimensions
     return yuv_frame.tobytes(), width, height
+
+
+# Backward-compatible alias
+png_to_yuv420_frame = image_to_yuv420_frame
 
 
 def utterance_words(utterance, offset=0.0):
@@ -482,6 +488,8 @@ def transcription_provider_from_bot_creation_data(data):
         return TranscriptionProviders.KYUTAI
     elif "custom_async" in settings:
         return TranscriptionProviders.CUSTOM_ASYNC
+    elif "custom_async_v2" in settings:
+        return TranscriptionProviders.CUSTOM_ASYNC_V2
     elif "meeting_closed_captions" in settings:
         return TranscriptionProviders.CLOSED_CAPTION_FROM_PLATFORM
 
@@ -509,6 +517,71 @@ def generate_async_transcriptions_json_for_bot_detail_view(recording):
     return async_transcriptions_data
 
 
+def generate_speaker_timeline_for_bot_detail_view(recording):
+    """Generate speaker timeline data (speech intervals per participant) for a recording."""
+
+    first_buffer_ms = recording.first_buffer_timestamp_ms
+    if not first_buffer_ms:
+        return []
+
+    speech_events = (
+        ParticipantEvent.objects.filter(
+            participant__bot=recording.bot,
+            event_type__in=[ParticipantEventTypes.SPEECH_START, ParticipantEventTypes.SPEECH_STOP],
+        )
+        .select_related("participant")
+        .order_by("timestamp_ms")
+    )
+
+    if not speech_events.exists():
+        return []
+
+    # Group events by participant
+    participants_data = {}
+    for event in speech_events:
+        pid = event.participant.uuid
+        if pid not in participants_data:
+            participants_data[pid] = {
+                "name": event.participant.full_name or event.participant.uuid,
+                "color": compute_participant_color(event.participant.uuid),
+                "events": [],
+            }
+
+        relative_ms = event.timestamp_ms - first_buffer_ms
+        participants_data[pid]["events"].append(
+            {
+                "type": "start" if event.event_type == ParticipantEventTypes.SPEECH_START else "stop",
+                "ms": relative_ms,
+            }
+        )
+
+    # Build intervals from start/stop pairs
+    result = []
+    for pid, data in participants_data.items():
+        intervals = []
+        current_start = None
+        for evt in data["events"]:
+            if evt["type"] == "start":
+                current_start = evt["ms"]
+            elif evt["type"] == "stop" and current_start is not None:
+                intervals.append({"start_ms": current_start, "end_ms": evt["ms"]})
+                current_start = None
+        # If there's a dangling start with no stop, leave end_ms null (JS will use video duration)
+        if current_start is not None:
+            intervals.append({"start_ms": current_start, "end_ms": None})
+
+        if intervals:
+            result.append(
+                {
+                    "name": data["name"],
+                    "color": data["color"],
+                    "intervals": intervals,
+                }
+            )
+
+    return result
+
+
 def generate_recordings_json_for_bot_detail_view(bot):
     # Process recordings and utterances
     recordings_data = []
@@ -522,6 +595,7 @@ def generate_recordings_json_for_bot_detail_view(bot):
             "failed_utterances": generate_failed_utterance_json_for_bot_detail_view(recording),
         }
         async_transcriptions = generate_async_transcriptions_json_for_bot_detail_view(recording)
+        speaker_timeline = generate_speaker_timeline_for_bot_detail_view(recording)
         recordings_data.append(
             {
                 "state": recording.state,
@@ -531,6 +605,7 @@ def generate_recordings_json_for_bot_detail_view(bot):
                     realtime_transcription,
                     *async_transcriptions,
                 ],
+                "speaker_timeline": speaker_timeline,
             }
         )
 
@@ -548,19 +623,60 @@ def is_valid_png(image_data: bytes) -> bool:
         bool: True if the data is a valid PNG image, False otherwise
     """
     try:
-        # First check for the PNG signature (first 8 bytes)
         png_signature = b"\x89PNG\r\n\x1a\n"
         if not image_data.startswith(png_signature):
             return False
 
-        # Try to decode the image using OpenCV
         img_array = np.frombuffer(image_data, np.uint8)
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
-        # If img is None, the decoding failed
         return img is not None
     except Exception:
         return False
+
+
+def is_valid_jpeg(image_data: bytes) -> bool:
+    """
+    Validates whether the provided bytes data is a valid JPEG image.
+
+    Args:
+        image_data (bytes): The image data to validate
+
+    Returns:
+        bool: True if the data is a valid JPEG image, False otherwise
+    """
+    try:
+        jpeg_signature = b"\xff\xd8\xff"
+        if not image_data.startswith(jpeg_signature):
+            return False
+
+        img_array = np.frombuffer(image_data, np.uint8)
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+
+        return img is not None
+    except Exception:
+        return False
+
+
+def is_valid_image(image_data: bytes, content_type: str) -> bool:
+    """
+    Validates whether the provided bytes data is a valid image of the given content type.
+
+    Args:
+        image_data (bytes): The image data to validate
+        content_type (str): The MIME type, e.g. "image/png" or "image/jpeg"
+
+    Returns:
+        bool: True if the data is a valid image matching the content type, False otherwise
+    """
+    validators = {
+        "image/png": is_valid_png,
+        "image/jpeg": is_valid_jpeg,
+    }
+    validator = validators.get(content_type)
+    if validator is None:
+        return False
+    return validator(image_data)
 
 
 """
